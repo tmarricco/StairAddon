@@ -273,6 +273,46 @@ local function CreateConfigFrame()
         local updatingFromSlider = false
         local updatingFromEditBox = false
 
+        -- Helper function to validate and apply value from edit box
+        local function ValidateAndApplyValue()
+            if updatingFromSlider then return end
+            updatingFromEditBox = true
+            
+            local value = tonumber(valueBox:GetText())
+            if value then
+                -- Clamp value to min/max range
+                if value < minVal then
+                    value = minVal
+                elseif value > maxVal then
+                    value = maxVal
+                end
+                
+                if isInteger then
+                    value = math_floor(value + 0.5)
+                end
+                
+                SpiralStairsDB[dbKey] = value
+                slider:SetValue(value)
+                
+                if isInteger then
+                    valueBox:SetText(string_format("%d", value))
+                else
+                    valueBox:SetText(string_format("%.1f", value))
+                end
+                SS:CalculateStairs()
+            else
+                -- Invalid input, revert to current value
+                local currentValue = SpiralStairsDB[dbKey]
+                if isInteger then
+                    valueBox:SetText(string_format("%d", currentValue))
+                else
+                    valueBox:SetText(string_format("%.1f", currentValue))
+                end
+            end
+            
+            updatingFromEditBox = false
+        end
+
         slider:SetScript("OnValueChanged", function(self, value)
             if updatingFromEditBox then return end
             updatingFromSlider = true
@@ -293,43 +333,8 @@ local function CreateConfigFrame()
 
         -- Handle Enter key press in edit box
         valueBox:SetScript("OnEnterPressed", function(self)
-            if updatingFromSlider then return end
-            updatingFromEditBox = true
-            
-            local value = tonumber(self:GetText())
-            if value then
-                -- Clamp value to min/max range
-                if value < minVal then
-                    value = minVal
-                elseif value > maxVal then
-                    value = maxVal
-                end
-                
-                if isInteger then
-                    value = math_floor(value + 0.5)
-                end
-                
-                SpiralStairsDB[dbKey] = value
-                slider:SetValue(value)
-                
-                if isInteger then
-                    self:SetText(string_format("%d", value))
-                else
-                    self:SetText(string_format("%.1f", value))
-                end
-                SS:CalculateStairs()
-            else
-                -- Invalid input, revert to current value
-                local currentValue = SpiralStairsDB[dbKey]
-                if isInteger then
-                    self:SetText(string_format("%d", currentValue))
-                else
-                    self:SetText(string_format("%.1f", currentValue))
-                end
-            end
+            ValidateAndApplyValue()
             self:ClearFocus()
-            
-            updatingFromEditBox = false
         end)
 
         -- Handle Escape key press in edit box
@@ -345,47 +350,12 @@ local function CreateConfigFrame()
         
         -- Handle focus loss
         valueBox:SetScript("OnEditFocusLost", function(self)
-            if updatingFromSlider then return end
-            updatingFromEditBox = true
-            
-            local value = tonumber(self:GetText())
-            if value then
-                -- Clamp value to min/max range
-                if value < minVal then
-                    value = minVal
-                elseif value > maxVal then
-                    value = maxVal
-                end
-                
-                if isInteger then
-                    value = math_floor(value + 0.5)
-                end
-                
-                SpiralStairsDB[dbKey] = value
-                slider:SetValue(value)
-                
-                if isInteger then
-                    self:SetText(string_format("%d", value))
-                else
-                    self:SetText(string_format("%.1f", value))
-                end
-                SS:CalculateStairs()
-            else
-                -- Invalid input, revert to current value
-                local currentValue = SpiralStairsDB[dbKey]
-                if isInteger then
-                    self:SetText(string_format("%d", currentValue))
-                else
-                    self:SetText(string_format("%.1f", currentValue))
-                end
-            end
-            
-            updatingFromEditBox = false
+            ValidateAndApplyValue()
         end)
 
         yOffset = yOffset - 35
 
-        return { slider = slider, valueBox = valueBox, dbKey = dbKey, isInteger = isInteger, minVal = minVal, maxVal = maxVal }
+        return { slider = slider, valueBox = valueBox, dbKey = dbKey, isInteger = isInteger }
     end
 
     -- Helper to create a labeled edit box row
