@@ -652,6 +652,9 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         InitializeDatabase()
         
         -- Recalculate stairs to ensure data is fresh when zoning
+        -- Note: This is intentionally called on every zone transition for simplicity.
+        -- The calculation is lightweight (O(n) where n is typically 12-36 steps)
+        -- and zone transitions are infrequent, so performance impact is negligible.
         SS:CalculateStairs()
     end
 end)
