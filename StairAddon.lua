@@ -90,7 +90,7 @@ function SS:PrintStairPositions()
     print("|cff00ff00=== Spiral Staircase Positions ===|r")
     print(string_format("Radius: %.2f | Height/Step: %.2f | Total Rotation: %d°",
         db.radius, db.heightPerStep, db.totalRotation))
-    print(string_format("Angle/Step: %.1f° | Direction: %s | Steps: %d",
+    print(string_format("Angle/Step: %.2f° | Direction: %s | Steps: %d",
         anglePerStep, db.clockwise and "Clockwise" or "Counter-clockwise", db.numSteps))
     print("|cff00ff00---------------------------------|r")
 
@@ -320,7 +320,7 @@ local function CreateConfigFrame()
     -- Create sliders
     frame.radiusRow = CreateSliderRow("Radius:", "radius", 0.5, 10, 0.5, false)
     frame.heightRow = CreateSliderRow("Height/Step:", "heightPerStep", 0.1, 2.0, 0.1, false)
-    frame.rotationRow = CreateSliderRow("Total Rotation:", "totalRotation", MIN_ROTATION, MAX_ROTATION, 15, true)
+    frame.rotationRow = CreateSliderRow("Total Rotation:", "totalRotation", MIN_ROTATION, MAX_ROTATION, MIN_ROTATION, true)
     frame.stepsRow = CreateSliderRow("Num Steps:", "numSteps", 2, 36, 1, true)
 
     -- Direction checkbox
