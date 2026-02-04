@@ -32,16 +32,22 @@ This document outlines best practices for developing World of Warcraft addons us
 The `.toc` (Table of Contents) file is required for WoW to recognize your addon:
 
 ```lua
-## Interface: XXXXXXX  -- Current WoW interface version (e.g., 110100 for 11.1.0)
+## Interface: 110100
 ## Title: Your Addon Name
 ## Notes: Brief description of what your addon does
 ## Author: Your Name
-## Version: X.Y.Z
-## SavedVariables: YourAddonDB  -- Global saved variables
-## SavedVariablesPerCharacter: YourAddonDBChar  -- Per-character saved variables
+## Version: 1.0.0
+## SavedVariables: YourAddonDB
+## SavedVariablesPerCharacter: YourAddonDBChar
 
-YourAddon.lua  -- List all Lua and XML files to load
+YourAddon.lua
 ```
+
+Comments:
+- Interface: Current WoW interface version (e.g., 110100 for 11.1.0)
+- SavedVariables: Global saved variables persisted across all characters
+- SavedVariablesPerCharacter: Per-character saved variables
+- List all Lua and XML files in load order
 
 ### TOC Best Practices
 - Keep the Interface version updated with each WoW patch
@@ -327,10 +333,11 @@ end
 ```
 
 ### Common Debugging Techniques
-- Use `/print` statements liberally during development
+- Use `print()` statements liberally during development
 - Add debug commands to inspect addon state
 - Use `/reload` (or `/rl`) to reload UI after changes
-- Check for Lua errors with Bugsack or similar error addons
+- Check for Lua errors with BugSack or similar error addons
+- Use `/dump` for complex table inspection (requires addon like DevPad)
 - Test edge cases and boundary conditions
 
 ## Documentation
