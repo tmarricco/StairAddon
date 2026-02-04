@@ -510,6 +510,24 @@ function SS:ShowPreview()
 end
 
 -- ============================================================================
+-- Helper Functions
+-- ============================================================================
+
+--- Initialize or ensure SpiralStairsDB is set up with defaults
+local function InitializeDatabase()
+    if not SpiralStairsDB then
+        SpiralStairsDB = {}
+    end
+    
+    -- Apply defaults for any missing values
+    for k, v in pairs(defaults) do
+        if SpiralStairsDB[k] == nil then
+            SpiralStairsDB[k] = v
+        end
+    end
+end
+
+-- ============================================================================
 -- Slash Commands
 -- ============================================================================
 
@@ -518,6 +536,9 @@ SLASH_SPIRALSTAIRS2 = "/spiral"
 SLASH_SPIRALSTAIRS3 = "/ss"
 
 SlashCmdList["SPIRALSTAIRS"] = function(msg)
+    -- Ensure SpiralStairsDB is initialized (safety check for edit mode or early command use)
+    InitializeDatabase()
+    
     msg = msg or ""
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
     cmd = (cmd or ""):lower()
@@ -606,25 +627,28 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
         -- Initialize saved variables
-        if not SpiralStairsDB then
-            SpiralStairsDB = {}
-        end
-
-        -- Apply defaults for any missing values
-        for k, v in pairs(defaults) do
-            if SpiralStairsDB[k] == nil then
-                SpiralStairsDB[k] = v
-            end
-        end
+        InitializeDatabase()
 
         -- Calculate initial stairs
         SS:CalculateStairs()
 
     elseif event == "PLAYER_LOGIN" then
         print("|cff00ff00Spiral Staircase Helper|r loaded. Type |cffffcc00/stairs|r for options.")
+    
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        -- Ensure addon is initialized when entering edit mode or any zone
+        -- This handles cases where the player enters housing edit mode
+        InitializeDatabase()
+        
+        -- Recalculate stairs to ensure data is fresh when zoning
+        -- Note: This is intentionally called on every zone transition for simplicity.
+        -- The calculation is lightweight (O(n) where n is typically 12-36 steps)
+        -- and zone transitions are infrequent, so performance impact is negligible.
+        SS:CalculateStairs()
     end
 end)
