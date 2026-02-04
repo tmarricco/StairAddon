@@ -133,7 +133,7 @@ end
 
 local function CreateSlider(parent, name, minVal, maxVal, step)
     local slider = CreateFrame("Slider", name, parent, "BackdropTemplate")
-    slider:SetSize(140, 17)
+    slider:SetSize(120, 17)
     slider:SetOrientation("HORIZONTAL")
     slider:SetMinMaxValues(minVal, maxVal)
     slider:SetValueStep(step)
@@ -266,8 +266,8 @@ local function CreateConfigFrame()
         slider:SetPoint("TOPLEFT", 125, rowY)
 
         -- Create an editable EditBox instead of a FontString
-        local valueBox = CreateEditBox(frame, nil, 50)
-        valueBox:SetPoint("LEFT", slider, "RIGHT", 10, 0)
+        local valueBox = CreateEditBox(frame, nil, 45)
+        valueBox:SetPoint("LEFT", slider, "RIGHT", 8, 0)
         
         -- Flag to prevent infinite update loops
         local updatingFromSlider = false
