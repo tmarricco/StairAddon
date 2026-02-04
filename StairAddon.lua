@@ -349,7 +349,7 @@ local function CreateConfigFrame()
 
     yOffset = yOffset - 30
 
-    local resetBtn = CreateButton(frame, nil, "Reset Defaults", 260, 24)
+    local resetBtn = CreateButton(frame, nil, "Reset Defaults", 270, 24)
     resetBtn:SetPoint("TOPLEFT", 20, yOffset)
     resetBtn:SetScript("OnClick", function()
         for k, v in pairs(defaults) do
