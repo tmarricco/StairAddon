@@ -649,9 +649,9 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
     elseif event == "PLAYER_ENTERING_WORLD" then
         -- Ensure addon is initialized when entering edit mode or any zone
         -- This handles cases where the player enters housing edit mode
-        if SpiralStairsDB then
-            -- Recalculate stairs to ensure data is fresh when zoning
-            SS:CalculateStairs()
-        end
+        InitializeDatabase()
+        
+        -- Recalculate stairs to ensure data is fresh when zoning
+        SS:CalculateStairs()
     end
 end)
