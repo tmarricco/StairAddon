@@ -503,7 +503,7 @@ local function CreateEditModeButton()
     
     -- Set initial position
     if SpiralStairsDB.buttonPos and SpiralStairsDB.buttonPos.point and 
-       SpiralStairsDB.buttonPos.x and SpiralStairsDB.buttonPos.y then
+       SpiralStairsDB.buttonPos.x ~= nil and SpiralStairsDB.buttonPos.y ~= nil then
         button:ClearAllPoints()
         button:SetPoint(SpiralStairsDB.buttonPos.point, UIParent, SpiralStairsDB.buttonPos.point, 
                        SpiralStairsDB.buttonPos.x, SpiralStairsDB.buttonPos.y)
