@@ -7,12 +7,9 @@ local addonName, addon = ...
 local defaults = {
     radius = 3.0,           -- Distance from center to each stair
     heightPerStep = 0.5,    -- Height increase per step
-    anglePerStep = 30,      -- Degrees to rotate per step
+    totalRotation = 360,    -- Total rotation from bottom to top (degrees)
     numSteps = 12,          -- Total number of stairs
     clockwise = true,       -- Direction of spiral
-    centerX = 0,            -- Center X coordinate
-    centerY = 0,            -- Center Y coordinate
-    centerZ = 0,            -- Center Z (height) coordinate
 }
 
 -- Addon namespace
@@ -39,17 +36,20 @@ function SS:CalculateStairs()
     local db = SpiralStairsDB or defaults
 
     local direction = db.clockwise and 1 or -1
+    
+    -- Calculate angle per step based on total rotation and number of steps
+    local anglePerStep = db.totalRotation / math.max(1, db.numSteps - 1)
 
     for i = 1, db.numSteps do
         local stepIndex = i - 1
-        local angle = math_rad(stepIndex * db.anglePerStep * direction)
+        local angle = math_rad(stepIndex * anglePerStep * direction)
 
         local stair = {
             step = i,
-            x = db.centerX + (db.radius * math_cos(angle)),
-            y = db.centerY + (db.radius * math_sin(angle)),
-            z = db.centerZ + (stepIndex * db.heightPerStep),
-            rotation = (stepIndex * db.anglePerStep * direction) % 360,
+            x = db.radius * math_cos(angle),
+            y = db.radius * math_sin(angle),
+            z = stepIndex * db.heightPerStep,
+            rotation = (stepIndex * anglePerStep * direction) % 360,
         }
 
         table.insert(self.stairs, stair)
@@ -73,12 +73,13 @@ function SS:PrintStairPositions()
     end
 
     local db = SpiralStairsDB or defaults
+    local anglePerStep = db.totalRotation / math.max(1, db.numSteps - 1)
+    
     print("|cff00ff00=== Spiral Staircase Positions ===|r")
-    print(string_format("Center: (%.2f, %.2f, %.2f)", db.centerX, db.centerY, db.centerZ))
-    print(string_format("Radius: %.2f | Height/Step: %.2f | Angle/Step: %d°",
-        db.radius, db.heightPerStep, db.anglePerStep))
-    print(string_format("Direction: %s | Steps: %d",
-        db.clockwise and "Clockwise" or "Counter-clockwise", db.numSteps))
+    print(string_format("Radius: %.2f | Height/Step: %.2f | Total Rotation: %d°",
+        db.radius, db.heightPerStep, db.totalRotation))
+    print(string_format("Angle/Step: %.1f° | Direction: %s | Steps: %d",
+        anglePerStep, db.clockwise and "Clockwise" or "Counter-clockwise", db.numSteps))
     print("|cff00ff00---------------------------------|r")
 
     for _, stair in ipairs(self.stairs) do
@@ -209,7 +210,7 @@ end
 local function CreateConfigFrame()
     -- Main frame
     local frame = CreateFrame("Frame", "SpiralStairsConfigFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(320, 400)
+    frame:SetSize(320, 300)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -307,23 +308,11 @@ local function CreateConfigFrame()
     -- Create sliders
     frame.radiusRow = CreateSliderRow("Radius:", "radius", 0.5, 10, 0.5, false)
     frame.heightRow = CreateSliderRow("Height/Step:", "heightPerStep", 0.1, 2.0, 0.1, false)
-    frame.angleRow = CreateSliderRow("Angle/Step:", "anglePerStep", 5, 90, 5, true)
+    frame.rotationRow = CreateSliderRow("Total Rotation:", "totalRotation", 45, 1080, 15, true)
     frame.stepsRow = CreateSliderRow("Num Steps:", "numSteps", 2, 36, 1, true)
 
-    -- Center coordinates label
-    yOffset = yOffset - 10
-    local coordLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    coordLabel:SetPoint("TOPLEFT", 20, yOffset)
-    coordLabel:SetText("|cff00ff00Center Coordinates:|r")
-    yOffset = yOffset - 25
-
-    -- Center coordinate inputs
-    frame.centerXRow = CreateEditRow("Center X:", "centerX")
-    frame.centerYRow = CreateEditRow("Center Y:", "centerY")
-    frame.centerZRow = CreateEditRow("Center Z:", "centerZ")
-
     -- Direction checkbox
-    yOffset = yOffset - 5
+    yOffset = yOffset - 10
     local dirCheck = CreateCheckbox(frame, nil, "Clockwise Direction")
     dirCheck:SetPoint("TOPLEFT", 20, yOffset)
     dirCheck:SetScript("OnClick", function(self)
@@ -340,32 +329,16 @@ local function CreateConfigFrame()
         SS:PrintStairPositions()
     end)
 
-    local playerBtn = CreateButton(frame, nil, "Use Player Pos", 130, 24)
-    playerBtn:SetPoint("TOPLEFT", 160, yOffset)
-    playerBtn:SetScript("OnClick", function()
-        local px, py, pz = SS:GetPlayerPosition()
-        if px then
-            SpiralStairsDB.centerX = px
-            SpiralStairsDB.centerY = py
-            SpiralStairsDB.centerZ = pz
-            SS:RefreshConfigUI()
-            SS:CalculateStairs()
-            print("|cff00ff00Center set to player position.|r")
-        else
-            print("|cffff0000Could not get player position.|r")
-        end
-    end)
-
-    yOffset = yOffset - 30
-
     local previewBtn = CreateButton(frame, nil, "Preview Info", 130, 24)
-    previewBtn:SetPoint("TOPLEFT", 20, yOffset)
+    previewBtn:SetPoint("TOPLEFT", 160, yOffset)
     previewBtn:SetScript("OnClick", function()
         SS:ShowPreview()
     end)
 
-    local resetBtn = CreateButton(frame, nil, "Reset Defaults", 130, 24)
-    resetBtn:SetPoint("TOPLEFT", 160, yOffset)
+    yOffset = yOffset - 30
+
+    local resetBtn = CreateButton(frame, nil, "Reset Defaults", 260, 24)
+    resetBtn:SetPoint("TOPLEFT", 20, yOffset)
     resetBtn:SetScript("OnClick", function()
         for k, v in pairs(defaults) do
             SpiralStairsDB[k] = v
@@ -389,12 +362,8 @@ function SS:RefreshConfigUI()
 
     frame.radiusRow.slider:SetValue(db.radius)
     frame.heightRow.slider:SetValue(db.heightPerStep)
-    frame.angleRow.slider:SetValue(db.anglePerStep)
+    frame.rotationRow.slider:SetValue(db.totalRotation)
     frame.stepsRow.slider:SetValue(db.numSteps)
-
-    frame.centerXRow.editBox:SetText(string_format("%.2f", db.centerX))
-    frame.centerYRow.editBox:SetText(string_format("%.2f", db.centerY))
-    frame.centerZRow.editBox:SetText(string_format("%.2f", db.centerZ))
 
     frame.directionCheck:SetChecked(db.clockwise)
 end
@@ -421,27 +390,6 @@ end
 -- Position Helpers
 -- ============================================================================
 
---- Get player's current position
-function SS:GetPlayerPosition()
-    -- Try UnitPosition first (works in instances/housing)
-    local y, x, z, instanceID = UnitPosition("player")
-    if x and y then
-        return x, y, z or 0
-    end
-
-    -- Fallback to map coordinates
-    local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
-    if mapID then
-        local pos = C_Map.GetPlayerMapPosition(mapID, "player")
-        if pos then
-            local px, py = pos:GetXY()
-            return px * 100, py * 100, 0
-        end
-    end
-
-    return nil
-end
-
 --- Create a simple preview indicator
 function SS:ShowPreview()
     if #self.stairs == 0 then
@@ -459,7 +407,7 @@ function SS:ShowPreview()
         print(string_format("  Start: (%.2f, %.2f, %.2f)", firstStair.x, firstStair.y, firstStair.z))
         print(string_format("  End:   (%.2f, %.2f, %.2f)", lastStair.x, lastStair.y, lastStair.z))
         print(string_format("  Total Height: %.2f", lastStair.z - firstStair.z))
-        print(string_format("  Total Rotation: %d°", (db.numSteps - 1) * db.anglePerStep))
+        print(string_format("  Total Rotation: %d°", db.totalRotation))
     end
 end
 
@@ -492,17 +440,6 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
     elseif cmd == "preview" then
         SS:CalculateStairs()
         SS:ShowPreview()
-    elseif cmd == "setcenter" then
-        local px, py, pz = SS:GetPlayerPosition()
-        if px then
-            SpiralStairsDB.centerX = px
-            SpiralStairsDB.centerY = py
-            SpiralStairsDB.centerZ = pz
-            SS:CalculateStairs()
-            print(string_format("|cff00ff00Center set to: (%.2f, %.2f, %.2f)|r", px, py, pz))
-        else
-            print("|cffff0000Could not get player position.|r")
-        end
     elseif cmd == "radius" and arg ~= "" then
         local value = tonumber(arg)
         if value and value > 0 then
@@ -517,12 +454,12 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
             SS:CalculateStairs()
             print(string_format("|cff00ff00Height per step set to: %.2f|r", value))
         end
-    elseif cmd == "angle" and arg ~= "" then
+    elseif cmd == "rotation" and arg ~= "" then
         local value = tonumber(arg)
-        if value and value > 0 and value <= 180 then
-            SpiralStairsDB.anglePerStep = value
+        if value and value > 0 and value <= 1080 then
+            SpiralStairsDB.totalRotation = value
             SS:CalculateStairs()
-            print(string_format("|cff00ff00Angle per step set to: %d°|r", value))
+            print(string_format("|cff00ff00Total rotation set to: %d°|r", value))
         end
     elseif cmd == "steps" and arg ~= "" then
         local value = tonumber(arg)
@@ -545,10 +482,9 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         print("|cffffcc00/stairs print|r - Print all positions")
         print("|cffffcc00/stairs step <n>|r - Print step N position")
         print("|cffffcc00/stairs preview|r - Show preview info")
-        print("|cffffcc00/stairs setcenter|r - Use player position")
         print("|cffffcc00/stairs radius <n>|r - Set radius")
         print("|cffffcc00/stairs height <n>|r - Set height/step")
-        print("|cffffcc00/stairs angle <n>|r - Set angle/step")
+        print("|cffffcc00/stairs rotation <n>|r - Set total rotation (degrees)")
         print("|cffffcc00/stairs steps <n>|r - Set num steps")
         print("|cffffcc00/stairs cw|ccw|r - Set direction")
     elseif cmd == "debug" then
@@ -558,6 +494,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         if SpiralStairsDB then
             print("Radius: " .. tostring(SpiralStairsDB.radius))
             print("Steps: " .. tostring(SpiralStairsDB.numSteps))
+            print("Total Rotation: " .. tostring(SpiralStairsDB.totalRotation))
         end
     else
         print("|cffff0000Unknown command. Type /stairs help|r")
