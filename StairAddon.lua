@@ -406,7 +406,20 @@ local function CreateConfigFrame()
     yOffset = yOffset - 35
 
     -- Buttons
-    local printBtn = CreateButton(frame, nil, "Print Positions", 130, 24)
+    local resetBtn = CreateButton(frame, nil, "Reset Defaults", 280, 24)
+    resetBtn:SetPoint("TOPLEFT", 20, yOffset)
+    resetBtn:SetScript("OnClick", function()
+        for k, v in pairs(defaults) do
+            SpiralStairsDB[k] = v
+        end
+        SS:RefreshConfigUI()
+        SS:CalculateStairs()
+        print("|cff00ff00Settings reset to defaults.|r")
+    end)
+
+    yOffset = yOffset - 30
+
+    local printBtn = CreateButton(frame, nil, "Print Positions", 280, 24)
     printBtn:SetPoint("TOPLEFT", 20, yOffset)
     printBtn:SetScript("OnClick", function()
         SS:PrintStairPositions()
@@ -423,25 +436,6 @@ local function CreateConfigFrame()
     end)
     printBtn:SetScript("OnLeave", function(self)
         GameTooltip:Hide()
-    end)
-
-    local previewBtn = CreateButton(frame, nil, "Preview Info", 130, 24)
-    previewBtn:SetPoint("TOPLEFT", 160, yOffset)
-    previewBtn:SetScript("OnClick", function()
-        SS:ShowPreview()
-    end)
-
-    yOffset = yOffset - 30
-
-    local resetBtn = CreateButton(frame, nil, "Reset Defaults", 270, 24)
-    resetBtn:SetPoint("TOPLEFT", 20, yOffset)
-    resetBtn:SetScript("OnClick", function()
-        for k, v in pairs(defaults) do
-            SpiralStairsDB[k] = v
-        end
-        SS:RefreshConfigUI()
-        SS:CalculateStairs()
-        print("|cff00ff00Settings reset to defaults.|r")
     end)
 
     frame:Hide()
