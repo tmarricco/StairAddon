@@ -524,6 +524,15 @@ SLASH_SPIRALSTAIRS2 = "/spiral"
 SLASH_SPIRALSTAIRS3 = "/ss"
 
 SlashCmdList["SPIRALSTAIRS"] = function(msg)
+    -- Ensure SpiralStairsDB is initialized (safety check for edit mode or early command use)
+    if not SpiralStairsDB then
+        SpiralStairsDB = {}
+        for k, v in pairs(defaults) do
+            SpiralStairsDB[k] = v
+        end
+        SS:CalculateStairs()
+    end
+    
     msg = msg or ""
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
     cmd = (cmd or ""):lower()
@@ -612,8 +621,12 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
-eventFrame:SetScript("OnEvent", function(self, event, arg1)
+-- Track if we've shown the initial login message
+local hasShownLoginMessage = false
+
+eventFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
     if event == "ADDON_LOADED" and arg1 == addonName then
         -- Initialize saved variables
         if not SpiralStairsDB then
@@ -631,6 +644,21 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         SS:CalculateStairs()
 
     elseif event == "PLAYER_LOGIN" then
+        hasShownLoginMessage = true
         print("|cff00ff00Spiral Staircase Helper|r loaded. Type |cffffcc00/stairs|r for options.")
+    
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        -- Ensure addon is initialized when entering edit mode or any zone
+        -- This handles cases where the player enters housing edit mode
+        if SpiralStairsDB then
+            -- Recalculate stairs to ensure data is fresh
+            SS:CalculateStairs()
+            
+            -- Only show message if this is after initial login
+            if hasShownLoginMessage and arg1 then
+                -- arg1 is isInitialLogin, arg2 is isReloadingUi
+                -- Don't spam message on every zone change, only on initial login
+            end
+        end
     end
 end)
