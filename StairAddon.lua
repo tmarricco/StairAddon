@@ -339,11 +339,12 @@ end
 ---@return number|nil x, number|nil y, number|nil z
 function SS:GetPlayerPosition()
     -- Try to use UnitPosition which gives actual world coordinates
-    -- Note: UnitPosition returns posY, posX (yes, in that order)
+    -- Note: UnitPosition returns posY, posX, posZ (all optional, in that unusual order)
+    -- We retrieve Y and X first, then Z separately for clarity and to handle nil values
     local posY, posX = UnitPosition("player")
     
     if posX and posY then
-        -- Get Z coordinate (height)
+        -- Get Z coordinate (height) separately to handle cases where it might be nil
         local posZ = select(3, UnitPosition("player")) or 0
         return posX, posY, posZ
     end
