@@ -95,8 +95,8 @@ function SS:PrintStairPositions()
     print("|cff00ff00---------------------------------|r")
 
     for _, stair in ipairs(self.stairs) do
-        print(string_format("|cffffcc00Step %2d:|r X: %7.2f  Y: %7.2f  Z: %7.2f  Rot: %3d°",
-            stair.step, stair.x, stair.y, stair.z, stair.rotation))
+        print(string_format("|cffffcc00Step %2d:|r Z: %7.2f  Rot: %3d°",
+            stair.step, stair.z, stair.rotation))
     end
 
     print("|cff00ff00=================================|r")
@@ -106,8 +106,8 @@ end
 function SS:PrintSingleStep(stepNum)
     local stair = self:GetStairPosition(stepNum)
     if stair then
-        print(string_format("|cff00ff00Step %d:|r X: %.2f  Y: %.2f  Z: %.2f  Rotation: %d°",
-            stair.step, stair.x, stair.y, stair.z, stair.rotation))
+        print(string_format("|cff00ff00Step %d:|r Z: %.2f  Rotation: %d°",
+            stair.step, stair.z, stair.rotation))
     else
         print("|cffff0000Invalid step number.|r")
     end
@@ -339,6 +339,19 @@ local function CreateConfigFrame()
     printBtn:SetPoint("TOPLEFT", 20, yOffset)
     printBtn:SetScript("OnClick", function()
         SS:PrintStairPositions()
+    end)
+    
+    -- Add tooltip to Print Positions button
+    printBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Print Positions", 1, 1, 1)
+        GameTooltip:AddLine("Outputs all staircase configuration and positions to chat.", nil, nil, nil, true)
+        GameTooltip:AddLine(" ", nil, nil, nil, true)
+        GameTooltip:AddLine("Height/Step: The vertical distance (Z) that each step rises from the previous one.", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    printBtn:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
     end)
 
     local previewBtn = CreateButton(frame, nil, "Preview Info", 130, 24)
