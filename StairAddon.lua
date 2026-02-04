@@ -502,11 +502,11 @@ local function CreateEditModeButton()
     button:SetClampedToScreen(true)
     
     -- Set initial position
-    local db = SpiralStairsDB or defaults
-    if db.buttonPos then
+    if SpiralStairsDB.buttonPos and SpiralStairsDB.buttonPos.point and 
+       SpiralStairsDB.buttonPos.x and SpiralStairsDB.buttonPos.y then
         button:ClearAllPoints()
-        button:SetPoint(db.buttonPos.point or "CENTER", UIParent, db.buttonPos.point or "CENTER", 
-                       db.buttonPos.x or 0, db.buttonPos.y or 0)
+        button:SetPoint(SpiralStairsDB.buttonPos.point, UIParent, SpiralStairsDB.buttonPos.point, 
+                       SpiralStairsDB.buttonPos.x, SpiralStairsDB.buttonPos.y)
     else
         button:SetPoint("CENTER", UIParent, "CENTER", 0, 200)
     end
