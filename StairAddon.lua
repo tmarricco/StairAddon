@@ -338,23 +338,30 @@ end
 --- Get player's current position
 ---@return number|nil x, number|nil y, number|nil z
 function SS:GetPlayerPosition()
+    -- Try to use UnitPosition which gives actual world coordinates
+    -- Note: UnitPosition returns posY, posX (yes, in that order)
+    local posY, posX = UnitPosition("player")
+    
+    if posX and posY then
+        -- Get Z coordinate (height)
+        local posZ = select(3, UnitPosition("player")) or 0
+        return posX, posY, posZ
+    end
+    
+    -- Fallback to map coordinates if UnitPosition is not available
     local mapID = C_Map.GetBestMapForUnit("player")
-    if not mapID then return nil end
-
-    local pos = C_Map.GetPlayerMapPosition(mapID, "player")
-    if not pos then return nil end
-
-    -- Note: In housing, you may need to use different APIs
-    -- This provides map coordinates which may need conversion
-    local x, y = pos:GetXY()
-
-    -- Try to get the actual world position if available
-    local _, _, _, instanceX, instanceY, _, _, _, _, _, _ = UnitPosition("player")
-    if instanceX and instanceY then
-        -- UnitPosition returns y, x in game coordinates
-        return instanceX, instanceY, 0
+    if not mapID then 
+        -- If we can't get any position, return 0,0,0 as a usable default
+        return 0, 0, 0
     end
 
+    local pos = C_Map.GetPlayerMapPosition(mapID, "player")
+    if not pos then 
+        return 0, 0, 0
+    end
+
+    -- Map coordinates are 0-1 range, scale them up for easier use
+    local x, y = pos:GetXY()
     return x * 100, y * 100, 0
 end
 
