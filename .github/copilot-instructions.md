@@ -32,7 +32,7 @@ This document outlines best practices for developing World of Warcraft addons us
 The `.toc` (Table of Contents) file is required for WoW to recognize your addon:
 
 ```
-## Interface: 110100
+## Interface: 120000
 ## Title: Your Addon Name
 ## Notes: Brief description of what your addon does
 ## Author: Your Name
@@ -44,7 +44,7 @@ YourAddon.lua
 ```
 
 Comments:
-- Interface: Current WoW interface version (e.g., 110100 for 11.1.0)
+- Interface: Current WoW interface version (e.g., 120000 for 12.0.0)
 - SavedVariables: Global saved variables persisted across all characters
 - SavedVariablesPerCharacter: Per-character saved variables
 - List all Lua and XML files in load order
