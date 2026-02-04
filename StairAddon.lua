@@ -544,7 +544,6 @@ SLASH_SPIRALSTAIRS3 = "/ss"
 SlashCmdList["SPIRALSTAIRS"] = function(msg)
     -- Ensure SpiralStairsDB is initialized (safety check for edit mode or early command use)
     InitializeDatabase()
-    SS:CalculateStairs()
     
     msg = msg or ""
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
@@ -636,7 +635,7 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
-eventFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
+eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
         -- Initialize saved variables
         InitializeDatabase()
