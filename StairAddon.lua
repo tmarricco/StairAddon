@@ -265,26 +265,97 @@ local function CreateConfigFrame()
         local slider = CreateSlider(frame, nil, minVal, maxVal, step)
         slider:SetPoint("TOPLEFT", 125, rowY)
 
-        local valueText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        valueText:SetPoint("LEFT", slider, "RIGHT", 10, 0)
-        valueText:SetWidth(40)
+        -- Create an editable EditBox instead of a FontString
+        local valueBox = CreateEditBox(frame, nil, 50)
+        valueBox:SetPoint("LEFT", slider, "RIGHT", 10, 0)
+        
+        -- Flag to prevent infinite update loops
+        local updatingFromSlider = false
+        local updatingFromEditBox = false
+
+        -- Helper function to validate and apply value from edit box
+        local function ValidateAndApplyValue()
+            if updatingFromSlider then return end
+            updatingFromEditBox = true
+            
+            local value = tonumber(valueBox:GetText())
+            if value then
+                -- Clamp value to min/max range
+                if value < minVal then
+                    value = minVal
+                elseif value > maxVal then
+                    value = maxVal
+                end
+                
+                if isInteger then
+                    value = math_floor(value + 0.5)
+                end
+                
+                SpiralStairsDB[dbKey] = value
+                slider:SetValue(value)
+                
+                if isInteger then
+                    valueBox:SetText(string_format("%d", value))
+                else
+                    valueBox:SetText(string_format("%.1f", value))
+                end
+                SS:CalculateStairs()
+            else
+                -- Invalid input, revert to current value
+                local currentValue = SpiralStairsDB[dbKey]
+                if isInteger then
+                    valueBox:SetText(string_format("%d", currentValue))
+                else
+                    valueBox:SetText(string_format("%.1f", currentValue))
+                end
+            end
+            
+            updatingFromEditBox = false
+        end
 
         slider:SetScript("OnValueChanged", function(self, value)
+            if updatingFromEditBox then return end
+            updatingFromSlider = true
+            
             if isInteger then
                 value = math_floor(value + 0.5)
             end
             SpiralStairsDB[dbKey] = value
             if isInteger then
-                valueText:SetText(string_format("%d", value))
+                valueBox:SetText(string_format("%d", value))
             else
-                valueText:SetText(string_format("%.1f", value))
+                valueBox:SetText(string_format("%.1f", value))
             end
             SS:CalculateStairs()
+            
+            updatingFromSlider = false
+        end)
+
+        -- Handle Enter key press in edit box
+        valueBox:SetScript("OnEnterPressed", function(self)
+            ValidateAndApplyValue()
+            self:ClearFocus()
+        end)
+
+        -- Handle Escape key press in edit box
+        valueBox:SetScript("OnEscapePressed", function(self)
+            local currentValue = SpiralStairsDB[dbKey]
+            if isInteger then
+                self:SetText(string_format("%d", currentValue))
+            else
+                self:SetText(string_format("%.1f", currentValue))
+            end
+            self:ClearFocus()
+        end)
+        
+        -- Handle focus loss
+        valueBox:SetScript("OnEditFocusLost", function(self)
+            ValidateAndApplyValue()
         end)
 
         yOffset = yOffset - 35
 
-        return { slider = slider, valueText = valueText, dbKey = dbKey, isInteger = isInteger }
+        return { slider = slider, valueBox = valueBox, dbKey = dbKey, isInteger = isInteger }
     end
 
     -- Helper to create a labeled edit box row
@@ -385,10 +456,18 @@ function SS:RefreshConfigUI()
 
     local db = SpiralStairsDB or defaults
 
+    -- Update sliders and their associated edit boxes
     frame.radiusRow.slider:SetValue(db.radius)
+    frame.radiusRow.valueBox:SetText(string_format("%.1f", db.radius))
+    
     frame.heightRow.slider:SetValue(db.heightPerStep)
+    frame.heightRow.valueBox:SetText(string_format("%.1f", db.heightPerStep))
+    
     frame.rotationRow.slider:SetValue(db.totalRotation)
+    frame.rotationRow.valueBox:SetText(string_format("%d", db.totalRotation))
+    
     frame.stepsRow.slider:SetValue(db.numSteps)
+    frame.stepsRow.valueBox:SetText(string_format("%d", db.numSteps))
 
     frame.directionCheck:SetChecked(db.clockwise)
 end
