@@ -80,6 +80,12 @@ function SS:GetStairPosition(stepNum)
     return self.stairs[stepNum]
 end
 
+--- Get the current angle per step for beam rotation
+local function GetBeamRotationAngle()
+    local db = SpiralStairsDB or defaults
+    return CalculateAnglePerStep(db.totalRotation, db.numSteps)
+end
+
 --- Print all stair positions to chat
 function SS:PrintStairPositions()
     if #self.stairs == 0 then
@@ -420,8 +426,7 @@ local function CreateConfigFrame()
     beamCheck:SetPoint("TOPLEFT", 20, yOffset)
     beamCheck:SetScript("OnClick", function(self)
         SpiralStairsDB.beamAutoRotate = self:GetChecked()
-        local db = SpiralStairsDB or defaults
-        local anglePerStep = CalculateAnglePerStep(db.totalRotation, db.numSteps)
+        local anglePerStep = GetBeamRotationAngle()
         if self:GetChecked() then
             print(string_format("|cff00ff00Beam Auto-Rotation enabled:|r %.2f° per beam", anglePerStep))
         else
@@ -434,9 +439,8 @@ local function CreateConfigFrame()
     beamCheck:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText("Beam Auto-Rotation", 1, 1, 1)
-        local db = SpiralStairsDB or defaults
-        local anglePerStep = CalculateAnglePerStep(db.totalRotation, db.numSteps)
-        GameTooltip:AddLine(string_format("When enabled, beams should be placed with %.2f° rotation increment.", anglePerStep), nil, nil, nil, true)
+        local anglePerStep = GetBeamRotationAngle()
+        GameTooltip:AddLine(string_format("When enabled, beams should be placed with a %.2f° rotation increment.", anglePerStep), nil, nil, nil, true)
         GameTooltip:AddLine(" ", nil, nil, nil, true)
         GameTooltip:AddLine("This matches the rotation interval of each stair step.", nil, nil, nil, true)
         GameTooltip:Show()
@@ -705,7 +709,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
     elseif cmd == "beam" or cmd == "beamrotate" then
         if arg == "on" or arg == "enable" or arg == "true" or arg == "1" then
             SpiralStairsDB.beamAutoRotate = true
-            local anglePerStep = CalculateAnglePerStep(SpiralStairsDB.totalRotation, SpiralStairsDB.numSteps)
+            local anglePerStep = GetBeamRotationAngle()
             print(string_format("|cff00ff00Beam Auto-Rotation enabled:|r %.2f° per beam", anglePerStep))
         elseif arg == "off" or arg == "disable" or arg == "false" or arg == "0" then
             SpiralStairsDB.beamAutoRotate = false
@@ -713,7 +717,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         else
             -- Toggle if no argument
             SpiralStairsDB.beamAutoRotate = not SpiralStairsDB.beamAutoRotate
-            local anglePerStep = CalculateAnglePerStep(SpiralStairsDB.totalRotation, SpiralStairsDB.numSteps)
+            local anglePerStep = GetBeamRotationAngle()
             if SpiralStairsDB.beamAutoRotate then
                 print(string_format("|cff00ff00Beam Auto-Rotation enabled:|r %.2f° per beam", anglePerStep))
             else
