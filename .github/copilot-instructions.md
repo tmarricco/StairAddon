@@ -31,7 +31,7 @@ This document outlines best practices for developing World of Warcraft addons us
 
 The `.toc` (Table of Contents) file is required for WoW to recognize your addon:
 
-```lua
+```
 ## Interface: 110100
 ## Title: Your Addon Name
 ## Notes: Brief description of what your addon does
@@ -152,7 +152,12 @@ end
 #### Position and Coordinates
 ```lua
 -- Get player position (works in instances/housing)
+-- Note: UnitPosition returns y, x, z, instanceID (y and x are swapped!)
 local y, x, z, instanceID = UnitPosition("player")
+if x and y then
+    -- Use x, y, z in standard order
+    local posX, posY, posZ = x, y, z or 0
+end
 
 -- Fallback to map coordinates
 local mapID = C_Map.GetBestMapForUnit("player")
@@ -324,7 +329,10 @@ local function DebugPrint(...)
     end
 end
 
--- Add debug slash command
+-- Add debug slash command (example fragment for use in slash command handler)
+-- Place this inside your SlashCmdList function:
+if cmd == "" or cmd == "help" then
+    -- Show help
 elseif cmd == "debug" then
     print("Debug Info:")
     print("Variable1:", tostring(value1))
