@@ -3,6 +3,10 @@
 
 local addonName, addon = ...
 
+-- Configuration constants
+local MIN_ROTATION = 45      -- Minimum total rotation in degrees
+local MAX_ROTATION = 1080    -- Maximum total rotation in degrees (3 full rotations)
+
 -- Saved variables defaults
 local defaults = {
     radius = 3.0,           -- Distance from center to each stair
@@ -82,7 +86,7 @@ function SS:PrintStairPositions()
 
     local db = SpiralStairsDB or defaults
     local anglePerStep = CalculateAnglePerStep(db.totalRotation, db.numSteps)
-    
+
     print("|cff00ff00=== Spiral Staircase Positions ===|r")
     print(string_format("Radius: %.2f | Height/Step: %.2f | Total Rotation: %d°",
         db.radius, db.heightPerStep, db.totalRotation))
@@ -316,7 +320,7 @@ local function CreateConfigFrame()
     -- Create sliders
     frame.radiusRow = CreateSliderRow("Radius:", "radius", 0.5, 10, 0.5, false)
     frame.heightRow = CreateSliderRow("Height/Step:", "heightPerStep", 0.1, 2.0, 0.1, false)
-    frame.rotationRow = CreateSliderRow("Total Rotation:", "totalRotation", 45, 1080, 15, true)
+    frame.rotationRow = CreateSliderRow("Total Rotation:", "totalRotation", MIN_ROTATION, MAX_ROTATION, 15, true)
     frame.stepsRow = CreateSliderRow("Num Steps:", "numSteps", 2, 36, 1, true)
 
     -- Direction checkbox
@@ -464,7 +468,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         end
     elseif cmd == "rotation" and arg ~= "" then
         local value = tonumber(arg)
-        if value and value > 0 and value <= 1080 then
+        if value and value >= MIN_ROTATION and value <= MAX_ROTATION then
             SpiralStairsDB.totalRotation = value
             SS:CalculateStairs()
             print(string_format("|cff00ff00Total rotation set to: %d°|r", value))
