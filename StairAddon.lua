@@ -13,7 +13,6 @@ local defaults = {
     centerX = 0,            -- Center X coordinate
     centerY = 0,            -- Center Y coordinate
     centerZ = 0,            -- Center Z (height) coordinate
-    showMarkers = true,     -- Show visual markers
 }
 
 -- Addon namespace
@@ -37,7 +36,7 @@ SS.stairs = {}
 --- Calculate all stair positions based on current settings
 function SS:CalculateStairs()
     self.stairs = {}
-    local db = SpiralStairsDB
+    local db = SpiralStairsDB or defaults
 
     local direction = db.clockwise and 1 or -1
 
@@ -60,8 +59,6 @@ function SS:CalculateStairs()
 end
 
 --- Get the position for a specific stair step
----@param stepNum number The step number (1-based)
----@return table|nil stair The stair position data or nil if invalid
 function SS:GetStairPosition(stepNum)
     if stepNum < 1 or stepNum > #self.stairs then
         return nil
@@ -75,13 +72,13 @@ function SS:PrintStairPositions()
         self:CalculateStairs()
     end
 
+    local db = SpiralStairsDB or defaults
     print("|cff00ff00=== Spiral Staircase Positions ===|r")
-    print(string_format("Center: (%.2f, %.2f, %.2f)",
-        SpiralStairsDB.centerX, SpiralStairsDB.centerY, SpiralStairsDB.centerZ))
+    print(string_format("Center: (%.2f, %.2f, %.2f)", db.centerX, db.centerY, db.centerZ))
     print(string_format("Radius: %.2f | Height/Step: %.2f | Angle/Step: %d°",
-        SpiralStairsDB.radius, SpiralStairsDB.heightPerStep, SpiralStairsDB.anglePerStep))
+        db.radius, db.heightPerStep, db.anglePerStep))
     print(string_format("Direction: %s | Steps: %d",
-        SpiralStairsDB.clockwise and "Clockwise" or "Counter-clockwise", SpiralStairsDB.numSteps))
+        db.clockwise and "Clockwise" or "Counter-clockwise", db.numSteps))
     print("|cff00ff00---------------------------------|r")
 
     for _, stair in ipairs(self.stairs) do
@@ -93,7 +90,6 @@ function SS:PrintStairPositions()
 end
 
 --- Print position for a single step
----@param stepNum number The step number to print
 function SS:PrintSingleStep(stepNum)
     local stair = self:GetStairPosition(stepNum)
     if stair then
@@ -105,55 +101,167 @@ function SS:PrintSingleStep(stepNum)
 end
 
 -- ============================================================================
--- Configuration UI
+-- Configuration UI (Built without templates for compatibility)
 -- ============================================================================
 
+local function CreateBackdrop(frame)
+    -- Try modern backdrop API first, fall back to old method
+    if frame.SetBackdrop then
+        frame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 32,
+            insets = { left = 8, right = 8, top = 8, bottom = 8 }
+        })
+    end
+end
+
+local function CreateSlider(parent, name, minVal, maxVal, step)
+    local slider = CreateFrame("Slider", name, parent, "BackdropTemplate")
+    slider:SetSize(140, 17)
+    slider:SetOrientation("HORIZONTAL")
+    slider:SetMinMaxValues(minVal, maxVal)
+    slider:SetValueStep(step)
+    slider:SetObeyStepOnDrag(true)
+
+    -- Background
+    slider:SetBackdrop({
+        bgFile = "Interface\\Buttons\\UI-SliderBar-Background",
+        edgeFile = "Interface\\Buttons\\UI-SliderBar-Border",
+        tile = true,
+        tileSize = 8,
+        edgeSize = 8,
+        insets = { left = 3, right = 3, top = 6, bottom = 6 }
+    })
+
+    -- Thumb texture
+    local thumb = slider:CreateTexture(nil, "ARTWORK")
+    thumb:SetTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+    thumb:SetSize(32, 32)
+    slider:SetThumbTexture(thumb)
+
+    return slider
+end
+
+local function CreateEditBox(parent, name, width)
+    local editBox = CreateFrame("EditBox", name, parent, "BackdropTemplate")
+    editBox:SetSize(width or 60, 20)
+    editBox:SetFontObject(ChatFontNormal)
+    editBox:SetAutoFocus(false)
+    editBox:SetJustifyH("CENTER")
+
+    editBox:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 1,
+        insets = { left = 0, right = 0, top = 0, bottom = 0 }
+    })
+    editBox:SetBackdropColor(0, 0, 0, 0.5)
+    editBox:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8)
+
+    return editBox
+end
+
+local function CreateButton(parent, name, text, width, height)
+    local button = CreateFrame("Button", name, parent, "UIPanelButtonTemplate")
+    button:SetSize(width or 100, height or 22)
+    button:SetText(text)
+    return button
+end
+
+local function CreateCheckbox(parent, name, label)
+    local check = CreateFrame("CheckButton", name, parent)
+    check:SetSize(26, 26)
+
+    local normalTex = check:CreateTexture(nil, "ARTWORK")
+    normalTex:SetTexture("Interface\\Buttons\\UI-CheckBox-Up")
+    normalTex:SetAllPoints()
+    check:SetNormalTexture(normalTex)
+
+    local pushedTex = check:CreateTexture(nil, "ARTWORK")
+    pushedTex:SetTexture("Interface\\Buttons\\UI-CheckBox-Down")
+    pushedTex:SetAllPoints()
+    check:SetPushedTexture(pushedTex)
+
+    local highlightTex = check:CreateTexture(nil, "HIGHLIGHT")
+    highlightTex:SetTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
+    highlightTex:SetAllPoints()
+    highlightTex:SetBlendMode("ADD")
+    check:SetHighlightTexture(highlightTex)
+
+    local checkedTex = check:CreateTexture(nil, "OVERLAY")
+    checkedTex:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    checkedTex:SetAllPoints()
+    check:SetCheckedTexture(checkedTex)
+
+    local labelText = check:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    labelText:SetPoint("LEFT", check, "RIGHT", 2, 0)
+    labelText:SetText(label)
+    check.label = labelText
+
+    return check
+end
+
 local function CreateConfigFrame()
-    local frame = CreateFrame("Frame", "SpiralStairsConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(350, 420)
+    -- Main frame
+    local frame = CreateFrame("Frame", "SpiralStairsConfigFrame", UIParent, "BackdropTemplate")
+    frame:SetSize(320, 400)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    frame:Hide()
+    frame:SetFrameStrata("DIALOG")
 
-    frame.TitleText:SetText("Spiral Staircase Helper")
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 32,
+        edgeSize = 32,
+        insets = { left = 11, right = 12, top = 12, bottom = 11 }
+    })
 
-    local yOffset = -35
-    local labelWidth = 120
-    local inputWidth = 80
+    -- Title
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", 0, -15)
+    title:SetText("Spiral Staircase Helper")
 
-    -- Helper function to create a slider
-    local function CreateSliderRow(parent, label, minVal, maxVal, step, dbKey, yPos)
-        local rowFrame = CreateFrame("Frame", nil, parent)
-        rowFrame:SetSize(320, 40)
-        rowFrame:SetPoint("TOPLEFT", 15, yPos)
+    -- Close button
+    local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    closeBtn:SetPoint("TOPRIGHT", -5, -5)
 
-        local text = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        text:SetPoint("LEFT", 0, 0)
-        text:SetText(label)
-        text:SetWidth(labelWidth)
-        text:SetJustifyH("LEFT")
+    local yOffset = -45
+    local db = SpiralStairsDB or defaults
 
-        local slider = CreateFrame("Slider", nil, rowFrame, "OptionsSliderTemplate")
-        slider:SetPoint("LEFT", labelWidth + 10, 0)
-        slider:SetWidth(120)
-        slider:SetMinMaxValues(minVal, maxVal)
-        slider:SetValueStep(step)
-        slider:SetObeyStepOnDrag(true)
+    -- Helper to create a labeled slider row
+    local function CreateSliderRow(label, dbKey, minVal, maxVal, step, isInteger)
+        local rowY = yOffset
 
-        slider.Low:SetText(tostring(minVal))
-        slider.High:SetText(tostring(maxVal))
+        local labelText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        labelText:SetPoint("TOPLEFT", 20, rowY)
+        labelText:SetText(label)
+        labelText:SetWidth(100)
+        labelText:SetJustifyH("LEFT")
 
-        local valueText = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        local slider = CreateSlider(frame, nil, minVal, maxVal, step)
+        slider:SetPoint("TOPLEFT", 125, rowY)
+
+        local valueText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         valueText:SetPoint("LEFT", slider, "RIGHT", 10, 0)
-        valueText:SetWidth(50)
+        valueText:SetWidth(40)
 
         slider:SetScript("OnValueChanged", function(self, value)
+            if isInteger then
+                value = math_floor(value + 0.5)
+            end
             SpiralStairsDB[dbKey] = value
-            if step >= 1 then
+            if isInteger then
                 valueText:SetText(string_format("%d", value))
             else
                 valueText:SetText(string_format("%.1f", value))
@@ -161,30 +269,23 @@ local function CreateConfigFrame()
             SS:CalculateStairs()
         end)
 
-        rowFrame.slider = slider
-        rowFrame.valueText = valueText
-        rowFrame.dbKey = dbKey
+        yOffset = yOffset - 35
 
-        return rowFrame
+        return { slider = slider, valueText = valueText, dbKey = dbKey, isInteger = isInteger }
     end
 
-    -- Helper function to create an input row
-    local function CreateInputRow(parent, label, dbKey, yPos)
-        local rowFrame = CreateFrame("Frame", nil, parent)
-        rowFrame:SetSize(320, 30)
-        rowFrame:SetPoint("TOPLEFT", 15, yPos)
+    -- Helper to create a labeled edit box row
+    local function CreateEditRow(label, dbKey)
+        local rowY = yOffset
 
-        local text = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        text:SetPoint("LEFT", 0, 0)
-        text:SetText(label)
-        text:SetWidth(labelWidth)
-        text:SetJustifyH("LEFT")
+        local labelText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        labelText:SetPoint("TOPLEFT", 20, rowY)
+        labelText:SetText(label)
+        labelText:SetWidth(100)
+        labelText:SetJustifyH("LEFT")
 
-        local editBox = CreateFrame("EditBox", nil, rowFrame, "InputBoxTemplate")
-        editBox:SetPoint("LEFT", labelWidth + 10, 0)
-        editBox:SetSize(inputWidth, 20)
-        editBox:SetAutoFocus(false)
-        editBox:SetNumeric(false)
+        local editBox = CreateEditBox(frame, nil, 80)
+        editBox:SetPoint("TOPLEFT", 125, rowY + 3)
 
         editBox:SetScript("OnEnterPressed", function(self)
             local value = tonumber(self:GetText()) or 0
@@ -194,69 +295,54 @@ local function CreateConfigFrame()
         end)
 
         editBox:SetScript("OnEscapePressed", function(self)
-            self:SetText(tostring(SpiralStairsDB[dbKey]))
+            self:SetText(string_format("%.2f", SpiralStairsDB[dbKey]))
             self:ClearFocus()
         end)
 
-        rowFrame.editBox = editBox
-        rowFrame.dbKey = dbKey
+        yOffset = yOffset - 30
 
-        return rowFrame
+        return { editBox = editBox, dbKey = dbKey }
     end
 
-    -- Create parameter controls
-    frame.radiusSlider = CreateSliderRow(frame, "Radius:", 0.5, 10, 0.5, "radius", yOffset)
-    yOffset = yOffset - 45
+    -- Create sliders
+    frame.radiusRow = CreateSliderRow("Radius:", "radius", 0.5, 10, 0.5, false)
+    frame.heightRow = CreateSliderRow("Height/Step:", "heightPerStep", 0.1, 2.0, 0.1, false)
+    frame.angleRow = CreateSliderRow("Angle/Step:", "anglePerStep", 5, 90, 5, true)
+    frame.stepsRow = CreateSliderRow("Num Steps:", "numSteps", 2, 36, 1, true)
 
-    frame.heightSlider = CreateSliderRow(frame, "Height/Step:", 0.1, 2.0, 0.1, "heightPerStep", yOffset)
-    yOffset = yOffset - 45
-
-    frame.angleSlider = CreateSliderRow(frame, "Angle/Step:", 5, 90, 5, "anglePerStep", yOffset)
-    yOffset = yOffset - 45
-
-    frame.stepsSlider = CreateSliderRow(frame, "Number of Steps:", 2, 36, 1, "numSteps", yOffset)
-    yOffset = yOffset - 50
-
-    -- Center coordinates
+    -- Center coordinates label
+    yOffset = yOffset - 10
     local coordLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    coordLabel:SetPoint("TOPLEFT", 15, yOffset)
+    coordLabel:SetPoint("TOPLEFT", 20, yOffset)
     coordLabel:SetText("|cff00ff00Center Coordinates:|r")
     yOffset = yOffset - 25
 
-    frame.centerX = CreateInputRow(frame, "Center X:", "centerX", yOffset)
-    yOffset = yOffset - 30
-
-    frame.centerY = CreateInputRow(frame, "Center Y:", "centerY", yOffset)
-    yOffset = yOffset - 30
-
-    frame.centerZ = CreateInputRow(frame, "Center Z:", "centerZ", yOffset)
-    yOffset = yOffset - 35
+    -- Center coordinate inputs
+    frame.centerXRow = CreateEditRow("Center X:", "centerX")
+    frame.centerYRow = CreateEditRow("Center Y:", "centerY")
+    frame.centerZRow = CreateEditRow("Center Z:", "centerZ")
 
     -- Direction checkbox
-    local directionCheck = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
-    directionCheck:SetPoint("TOPLEFT", 15, yOffset)
-    directionCheck.text:SetText("Clockwise Direction")
-    directionCheck:SetScript("OnClick", function(self)
+    yOffset = yOffset - 5
+    local dirCheck = CreateCheckbox(frame, nil, "Clockwise Direction")
+    dirCheck:SetPoint("TOPLEFT", 20, yOffset)
+    dirCheck:SetScript("OnClick", function(self)
         SpiralStairsDB.clockwise = self:GetChecked()
         SS:CalculateStairs()
     end)
-    frame.directionCheck = directionCheck
+    frame.directionCheck = dirCheck
     yOffset = yOffset - 35
 
     -- Buttons
-    local printButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    printButton:SetSize(140, 25)
-    printButton:SetPoint("TOPLEFT", 15, yOffset)
-    printButton:SetText("Print Positions")
-    printButton:SetScript("OnClick", function()
+    local printBtn = CreateButton(frame, nil, "Print Positions", 130, 24)
+    printBtn:SetPoint("TOPLEFT", 20, yOffset)
+    printBtn:SetScript("OnClick", function()
         SS:PrintStairPositions()
     end)
 
-    local usePlayerBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    usePlayerBtn:SetSize(140, 25)
-    usePlayerBtn:SetPoint("TOPLEFT", 165, yOffset)
-    usePlayerBtn:SetText("Use Player Position")
-    usePlayerBtn:SetScript("OnClick", function()
+    local playerBtn = CreateButton(frame, nil, "Use Player Pos", 130, 24)
+    playerBtn:SetPoint("TOPLEFT", 160, yOffset)
+    playerBtn:SetScript("OnClick", function()
         local px, py, pz = SS:GetPlayerPosition()
         if px then
             SpiralStairsDB.centerX = px
@@ -272,19 +358,15 @@ local function CreateConfigFrame()
 
     yOffset = yOffset - 30
 
-    local copyButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    copyButton:SetSize(140, 25)
-    copyButton:SetPoint("TOPLEFT", 15, yOffset)
-    copyButton:SetText("Copy to Clipboard")
-    copyButton:SetScript("OnClick", function()
-        SS:CopyPositionsToClipboard()
+    local previewBtn = CreateButton(frame, nil, "Preview Info", 130, 24)
+    previewBtn:SetPoint("TOPLEFT", 20, yOffset)
+    previewBtn:SetScript("OnClick", function()
+        SS:ShowPreview()
     end)
 
-    local resetButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    resetButton:SetSize(140, 25)
-    resetButton:SetPoint("TOPLEFT", 165, yOffset)
-    resetButton:SetText("Reset to Defaults")
-    resetButton:SetScript("OnClick", function()
+    local resetBtn = CreateButton(frame, nil, "Reset Defaults", 130, 24)
+    resetBtn:SetPoint("TOPLEFT", 160, yOffset)
+    resetBtn:SetScript("OnClick", function()
         for k, v in pairs(defaults) do
             SpiralStairsDB[k] = v
         end
@@ -293,6 +375,7 @@ local function CreateConfigFrame()
         print("|cff00ff00Settings reset to defaults.|r")
     end)
 
+    frame:Hide()
     SS.configFrame = frame
     return frame
 end
@@ -302,16 +385,16 @@ function SS:RefreshConfigUI()
     local frame = self.configFrame
     if not frame then return end
 
-    local db = SpiralStairsDB
+    local db = SpiralStairsDB or defaults
 
-    frame.radiusSlider.slider:SetValue(db.radius)
-    frame.heightSlider.slider:SetValue(db.heightPerStep)
-    frame.angleSlider.slider:SetValue(db.anglePerStep)
-    frame.stepsSlider.slider:SetValue(db.numSteps)
+    frame.radiusRow.slider:SetValue(db.radius)
+    frame.heightRow.slider:SetValue(db.heightPerStep)
+    frame.angleRow.slider:SetValue(db.anglePerStep)
+    frame.stepsRow.slider:SetValue(db.numSteps)
 
-    frame.centerX.editBox:SetText(string_format("%.2f", db.centerX))
-    frame.centerY.editBox:SetText(string_format("%.2f", db.centerY))
-    frame.centerZ.editBox:SetText(string_format("%.2f", db.centerZ))
+    frame.centerXRow.editBox:SetText(string_format("%.2f", db.centerX))
+    frame.centerYRow.editBox:SetText(string_format("%.2f", db.centerY))
+    frame.centerZRow.editBox:SetText(string_format("%.2f", db.centerZ))
 
     frame.directionCheck:SetChecked(db.clockwise)
 end
@@ -319,8 +402,11 @@ end
 --- Toggle the config frame visibility
 function SS:ToggleConfig()
     if not self.configFrame then
-        CreateConfigFrame()
-        self:RefreshConfigUI()
+        local success, err = pcall(CreateConfigFrame)
+        if not success then
+            print("|cffff0000Error creating config frame: " .. tostring(err) .. "|r")
+            return
+        end
     end
 
     if self.configFrame:IsShown() then
@@ -336,82 +422,25 @@ end
 -- ============================================================================
 
 --- Get player's current position
----@return number|nil x, number|nil y, number|nil z
 function SS:GetPlayerPosition()
-    local mapID = C_Map.GetBestMapForUnit("player")
-    if not mapID then return nil end
-
-    local pos = C_Map.GetPlayerMapPosition(mapID, "player")
-    if not pos then return nil end
-
-    -- Note: In housing, you may need to use different APIs
-    -- This provides map coordinates which may need conversion
-    local x, y = pos:GetXY()
-
-    -- Try to get the actual world position if available
-    local _, _, _, instanceX, instanceY, _, _, _, _, _, _ = UnitPosition("player")
-    if instanceX and instanceY then
-        -- UnitPosition returns y, x in game coordinates
-        return instanceX, instanceY, 0
+    -- Try UnitPosition first (works in instances/housing)
+    local y, x, z, instanceID = UnitPosition("player")
+    if x and y then
+        return x, y, z or 0
     end
 
-    return x * 100, y * 100, 0
+    -- Fallback to map coordinates
+    local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    if mapID then
+        local pos = C_Map.GetPlayerMapPosition(mapID, "player")
+        if pos then
+            local px, py = pos:GetXY()
+            return px * 100, py * 100, 0
+        end
+    end
+
+    return nil
 end
-
---- Copy stair positions to an edit box for clipboard copying
-function SS:CopyPositionsToClipboard()
-    if #self.stairs == 0 then
-        self:CalculateStairs()
-    end
-
-    local text = "Spiral Staircase Positions\n"
-    text = text .. string_format("Center: (%.2f, %.2f, %.2f)\n",
-        SpiralStairsDB.centerX, SpiralStairsDB.centerY, SpiralStairsDB.centerZ)
-    text = text .. string_format("Radius: %.2f, Height/Step: %.2f, Angle: %d°, Steps: %d\n\n",
-        SpiralStairsDB.radius, SpiralStairsDB.heightPerStep,
-        SpiralStairsDB.anglePerStep, SpiralStairsDB.numSteps)
-
-    for _, stair in ipairs(self.stairs) do
-        text = text .. string_format("Step %d: X=%.2f, Y=%.2f, Z=%.2f, Rot=%d°\n",
-            stair.step, stair.x, stair.y, stair.z, stair.rotation)
-    end
-
-    -- Create a copy dialog
-    if not SS.copyFrame then
-        local copyFrame = CreateFrame("Frame", "SpiralStairsCopyFrame", UIParent, "BasicFrameTemplateWithInset")
-        copyFrame:SetSize(400, 300)
-        copyFrame:SetPoint("CENTER")
-        copyFrame:SetMovable(true)
-        copyFrame:EnableMouse(true)
-        copyFrame:RegisterForDrag("LeftButton")
-        copyFrame:SetScript("OnDragStart", copyFrame.StartMoving)
-        copyFrame:SetScript("OnDragStop", copyFrame.StopMovingOrSizing)
-        copyFrame.TitleText:SetText("Copy Positions (Ctrl+C)")
-
-        local scrollFrame = CreateFrame("ScrollFrame", nil, copyFrame, "UIPanelScrollFrameTemplate")
-        scrollFrame:SetPoint("TOPLEFT", 10, -30)
-        scrollFrame:SetPoint("BOTTOMRIGHT", -30, 10)
-
-        local editBox = CreateFrame("EditBox", nil, scrollFrame)
-        editBox:SetMultiLine(true)
-        editBox:SetFontObject(GameFontHighlightSmall)
-        editBox:SetWidth(340)
-        editBox:SetAutoFocus(true)
-        editBox:SetScript("OnEscapePressed", function() copyFrame:Hide() end)
-
-        scrollFrame:SetScrollChild(editBox)
-        copyFrame.editBox = editBox
-        SS.copyFrame = copyFrame
-    end
-
-    SS.copyFrame.editBox:SetText(text)
-    SS.copyFrame.editBox:HighlightText()
-    SS.copyFrame:Show()
-end
-
--- ============================================================================
--- Preview/Visualization (Optional - uses world markers if available)
--- ============================================================================
 
 --- Create a simple preview indicator
 function SS:ShowPreview()
@@ -424,12 +453,13 @@ function SS:ShowPreview()
 
     local firstStair = self.stairs[1]
     local lastStair = self.stairs[#self.stairs]
+    local db = SpiralStairsDB or defaults
 
     if firstStair and lastStair then
         print(string_format("  Start: (%.2f, %.2f, %.2f)", firstStair.x, firstStair.y, firstStair.z))
         print(string_format("  End:   (%.2f, %.2f, %.2f)", lastStair.x, lastStair.y, lastStair.z))
         print(string_format("  Total Height: %.2f", lastStair.z - firstStair.z))
-        print(string_format("  Total Rotation: %d°", (SpiralStairsDB.numSteps - 1) * SpiralStairsDB.anglePerStep))
+        print(string_format("  Total Rotation: %d°", (db.numSteps - 1) * db.anglePerStep))
     end
 end
 
@@ -442,8 +472,9 @@ SLASH_SPIRALSTAIRS2 = "/spiral"
 SLASH_SPIRALSTAIRS3 = "/ss"
 
 SlashCmdList["SPIRALSTAIRS"] = function(msg)
+    msg = msg or ""
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
-    cmd = cmd:lower()
+    cmd = (cmd or ""):lower()
 
     if cmd == "" or cmd == "config" or cmd == "options" then
         SS:ToggleConfig()
@@ -461,9 +492,6 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
     elseif cmd == "preview" then
         SS:CalculateStairs()
         SS:ShowPreview()
-    elseif cmd == "copy" then
-        SS:CalculateStairs()
-        SS:CopyPositionsToClipboard()
     elseif cmd == "setcenter" then
         local px, py, pz = SS:GetPlayerPosition()
         if px then
@@ -503,31 +531,36 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
             SS:CalculateStairs()
             print(string_format("|cff00ff00Number of steps set to: %d|r", value))
         end
-    elseif cmd == "clockwise" or cmd == "cw" then
+    elseif cmd == "cw" or cmd == "clockwise" then
         SpiralStairsDB.clockwise = true
         SS:CalculateStairs()
         print("|cff00ff00Direction set to clockwise.|r")
-    elseif cmd == "counterclockwise" or cmd == "ccw" then
+    elseif cmd == "ccw" or cmd == "counterclockwise" then
         SpiralStairsDB.clockwise = false
         SS:CalculateStairs()
         print("|cff00ff00Direction set to counter-clockwise.|r")
     elseif cmd == "help" then
-        print("|cff00ff00=== Spiral Staircase Helper Commands ===|r")
-        print("|cffffcc00/stairs|r or |cffffcc00/spiral|r or |cffffcc00/ss|r - Open config UI")
-        print("|cffffcc00/stairs print|r - Print all stair positions")
-        print("|cffffcc00/stairs step <num>|r - Print position for step #")
-        print("|cffffcc00/stairs preview|r - Show staircase preview info")
-        print("|cffffcc00/stairs copy|r - Copy positions to clipboard")
-        print("|cffffcc00/stairs setcenter|r - Set center to player position")
-        print("|cffffcc00/stairs radius <num>|r - Set radius")
-        print("|cffffcc00/stairs height <num>|r - Set height per step")
-        print("|cffffcc00/stairs angle <num>|r - Set angle per step (degrees)")
-        print("|cffffcc00/stairs steps <num>|r - Set number of steps")
-        print("|cffffcc00/stairs cw|r - Set clockwise direction")
-        print("|cffffcc00/stairs ccw|r - Set counter-clockwise direction")
-        print("|cff00ff00=========================================|r")
+        print("|cff00ff00=== Spiral Staircase Helper ===|r")
+        print("|cffffcc00/stairs|r - Open config window")
+        print("|cffffcc00/stairs print|r - Print all positions")
+        print("|cffffcc00/stairs step <n>|r - Print step N position")
+        print("|cffffcc00/stairs preview|r - Show preview info")
+        print("|cffffcc00/stairs setcenter|r - Use player position")
+        print("|cffffcc00/stairs radius <n>|r - Set radius")
+        print("|cffffcc00/stairs height <n>|r - Set height/step")
+        print("|cffffcc00/stairs angle <n>|r - Set angle/step")
+        print("|cffffcc00/stairs steps <n>|r - Set num steps")
+        print("|cffffcc00/stairs cw|ccw|r - Set direction")
+    elseif cmd == "debug" then
+        print("|cff00ff00Debug info:|r")
+        print("SpiralStairsDB exists: " .. tostring(SpiralStairsDB ~= nil))
+        print("Config frame exists: " .. tostring(SS.configFrame ~= nil))
+        if SpiralStairsDB then
+            print("Radius: " .. tostring(SpiralStairsDB.radius))
+            print("Steps: " .. tostring(SpiralStairsDB.numSteps))
+        end
     else
-        print("|cffff0000Unknown command. Use /stairs help for a list of commands.|r")
+        print("|cffff0000Unknown command. Type /stairs help|r")
     end
 end
 
@@ -557,6 +590,6 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         SS:CalculateStairs()
 
     elseif event == "PLAYER_LOGIN" then
-        print("|cff00ff00Spiral Staircase Helper|r loaded. Type |cffffcc00/stairs|r or |cffffcc00/ss|r for options.")
+        print("|cff00ff00Spiral Staircase Helper|r loaded. Type |cffffcc00/stairs|r for options.")
     end
 end)
