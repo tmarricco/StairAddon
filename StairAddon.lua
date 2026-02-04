@@ -516,6 +516,24 @@ function SS:ShowPreview()
 end
 
 -- ============================================================================
+-- Helper Functions
+-- ============================================================================
+
+--- Initialize or ensure SpiralStairsDB is set up with defaults
+local function InitializeDatabase()
+    if not SpiralStairsDB then
+        SpiralStairsDB = {}
+    end
+    
+    -- Apply defaults for any missing values
+    for k, v in pairs(defaults) do
+        if SpiralStairsDB[k] == nil then
+            SpiralStairsDB[k] = v
+        end
+    end
+end
+
+-- ============================================================================
 -- Slash Commands
 -- ============================================================================
 
@@ -525,13 +543,8 @@ SLASH_SPIRALSTAIRS3 = "/ss"
 
 SlashCmdList["SPIRALSTAIRS"] = function(msg)
     -- Ensure SpiralStairsDB is initialized (safety check for edit mode or early command use)
-    if not SpiralStairsDB then
-        SpiralStairsDB = {}
-        for k, v in pairs(defaults) do
-            SpiralStairsDB[k] = v
-        end
-        SS:CalculateStairs()
-    end
+    InitializeDatabase()
+    SS:CalculateStairs()
     
     msg = msg or ""
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
@@ -623,28 +636,15 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
--- Track if we've shown the initial login message
-local hasShownLoginMessage = false
-
 eventFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
     if event == "ADDON_LOADED" and arg1 == addonName then
         -- Initialize saved variables
-        if not SpiralStairsDB then
-            SpiralStairsDB = {}
-        end
-
-        -- Apply defaults for any missing values
-        for k, v in pairs(defaults) do
-            if SpiralStairsDB[k] == nil then
-                SpiralStairsDB[k] = v
-            end
-        end
+        InitializeDatabase()
 
         -- Calculate initial stairs
         SS:CalculateStairs()
 
     elseif event == "PLAYER_LOGIN" then
-        hasShownLoginMessage = true
         print("|cff00ff00Spiral Staircase Helper|r loaded. Type |cffffcc00/stairs|r for options.")
     
     elseif event == "PLAYER_ENTERING_WORLD" then
