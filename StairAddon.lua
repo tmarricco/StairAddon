@@ -502,7 +502,7 @@ local function CreateEditModeButton()
     button:SetClampedToScreen(true)
     
     -- Set initial position
-    if SpiralStairsDB.buttonPos and SpiralStairsDB.buttonPos.point and 
+    if SpiralStairsDB.buttonPos and SpiralStairsDB.buttonPos.point and
        SpiralStairsDB.buttonPos.x ~= nil and SpiralStairsDB.buttonPos.y ~= nil then
         button:ClearAllPoints()
         button:SetPoint(SpiralStairsDB.buttonPos.point, UIParent, SpiralStairsDB.buttonPos.point, 
@@ -518,7 +518,7 @@ local function CreateEditModeButton()
     
     button:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        -- Save position
+        -- Save position: GetPoint returns (point, relativeTo, relativePoint, x, y)
         local point, _, _, x, y = self:GetPoint()
         SpiralStairsDB.buttonPos = { point = point, x = x, y = y }
     end)
@@ -532,6 +532,7 @@ local function CreateEditModeButton()
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText("Spiral Staircase Helper", 1, 1, 1)
+        -- AddLine parameters: text, r, g, b, wrap
         GameTooltip:AddLine("Click to open configuration window", nil, nil, nil, true)
         GameTooltip:AddLine("Drag to move this button", nil, nil, nil, true)
         GameTooltip:Show()
