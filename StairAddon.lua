@@ -651,14 +651,8 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
         -- Ensure addon is initialized when entering edit mode or any zone
         -- This handles cases where the player enters housing edit mode
         if SpiralStairsDB then
-            -- Recalculate stairs to ensure data is fresh
+            -- Recalculate stairs to ensure data is fresh when zoning
             SS:CalculateStairs()
-            
-            -- Only show message if this is after initial login
-            if hasShownLoginMessage and arg1 then
-                -- arg1 is isInitialLogin, arg2 is isReloadingUi
-                -- Don't spam message on every zone change, only on initial login
-            end
         end
     end
 end)
