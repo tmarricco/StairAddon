@@ -14,6 +14,7 @@ local defaults = {
     totalRotation = 360,    -- Total rotation from bottom to top (degrees)
     numSteps = 12,          -- Total number of stairs
     clockwise = true,       -- Direction of spiral
+    buttonPos = nil,        -- Position of the Edit Mode button {point, x, y}
 }
 
 -- Addon namespace
@@ -485,6 +486,69 @@ function SS:ToggleConfig()
 end
 
 -- ============================================================================
+-- Edit Mode Button
+-- ============================================================================
+
+--- Create the Edit Mode button that opens the config window
+local function CreateEditModeButton()
+    -- Create a movable button frame
+    local button = CreateFrame("Button", "SpiralStairsEditModeButton", UIParent, "UIPanelButtonTemplate")
+    button:SetSize(120, 30)
+    button:SetText("Stairs Helper")
+    button:SetMovable(true)
+    button:EnableMouse(true)
+    button:RegisterForDrag("LeftButton")
+    button:SetFrameStrata("HIGH")
+    button:SetClampedToScreen(true)
+    
+    -- Set initial position
+    local db = SpiralStairsDB or defaults
+    if db.buttonPos then
+        button:ClearAllPoints()
+        button:SetPoint(db.buttonPos.point or "CENTER", UIParent, db.buttonPos.point or "CENTER", 
+                       db.buttonPos.x or 0, db.buttonPos.y or 0)
+    else
+        button:SetPoint("CENTER", UIParent, "CENTER", 0, 200)
+    end
+    
+    -- Drag handlers
+    button:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
+    
+    button:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        -- Save position
+        local point, _, _, x, y = self:GetPoint()
+        SpiralStairsDB.buttonPos = { point = point, x = x, y = y }
+    end)
+    
+    -- Click handler to open config window
+    button:SetScript("OnClick", function()
+        SS:ToggleConfig()
+    end)
+    
+    -- Tooltip
+    button:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Spiral Staircase Helper", 1, 1, 1)
+        GameTooltip:AddLine("Click to open configuration window", nil, nil, nil, true)
+        GameTooltip:AddLine("Drag to move this button", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    
+    button:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
+    end)
+    
+    -- Initially hidden
+    button:Hide()
+    
+    SS.editModeButton = button
+    return button
+end
+
+-- ============================================================================
 -- Position Helpers
 -- ============================================================================
 
@@ -628,6 +692,8 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:RegisterEvent("PLAYER_HOUSING_EDIT_MODE_START")
+eventFrame:RegisterEvent("PLAYER_HOUSING_EDIT_MODE_END")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
@@ -636,6 +702,9 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
 
         -- Calculate initial stairs
         SS:CalculateStairs()
+        
+        -- Create the Edit Mode button
+        CreateEditModeButton()
 
     elseif event == "PLAYER_LOGIN" then
         print("|cff00ff00Spiral Staircase Helper|r loaded. Type |cffffcc00/stairs|r for options.")
@@ -650,5 +719,17 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         -- The calculation is lightweight (O(n) where n is typically 12-36 steps)
         -- and zone transitions are infrequent, so performance impact is negligible.
         SS:CalculateStairs()
+    
+    elseif event == "PLAYER_HOUSING_EDIT_MODE_START" then
+        -- Show the Edit Mode button when entering housing edit mode
+        if SS.editModeButton then
+            SS.editModeButton:Show()
+        end
+    
+    elseif event == "PLAYER_HOUSING_EDIT_MODE_END" then
+        -- Hide the Edit Mode button when exiting housing edit mode
+        if SS.editModeButton then
+            SS.editModeButton:Hide()
+        end
     end
 end)
