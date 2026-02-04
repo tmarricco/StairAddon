@@ -14,6 +14,7 @@ local defaults = {
     totalRotation = 360,    -- Total rotation from bottom to top (degrees)
     numSteps = 12,          -- Total number of stairs
     clockwise = true,       -- Direction of spiral
+    beamAutoRotate = false, -- Enable beam auto-rotation at stair intervals
     buttonPos = nil,        -- Position of the Edit Mode button {point, x, y}
 }
 
@@ -93,6 +94,14 @@ function SS:PrintStairPositions()
         db.radius, db.heightPerStep, db.totalRotation))
     print(string_format("Angle/Step: %.2f° | Direction: %s | Steps: %d",
         anglePerStep, db.clockwise and "Clockwise" or "Counter-clockwise", db.numSteps))
+    
+    -- Display beam auto-rotation info
+    if db.beamAutoRotate then
+        print(string_format("|cff00ff00Beam Auto-Rotation:|r Enabled (%.2f° per beam)", anglePerStep))
+    else
+        print(string_format("|cff888888Beam Auto-Rotation:|r Disabled"))
+    end
+    
     print("|cff00ff00---------------------------------|r")
 
     for _, stair in ipairs(self.stairs) do
@@ -223,7 +232,7 @@ end
 local function CreateConfigFrame()
     -- Main frame
     local frame = CreateFrame("Frame", "SpiralStairsConfigFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(320, 300)
+    frame:SetSize(320, 335)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -406,6 +415,38 @@ local function CreateConfigFrame()
     frame.directionCheck = dirCheck
     yOffset = yOffset - 35
 
+    -- Beam Auto-Rotation checkbox
+    local beamCheck = CreateCheckbox(frame, nil, "Beam Auto-Rotation")
+    beamCheck:SetPoint("TOPLEFT", 20, yOffset)
+    beamCheck:SetScript("OnClick", function(self)
+        SpiralStairsDB.beamAutoRotate = self:GetChecked()
+        local db = SpiralStairsDB or defaults
+        local anglePerStep = CalculateAnglePerStep(db.totalRotation, db.numSteps)
+        if self:GetChecked() then
+            print(string_format("|cff00ff00Beam Auto-Rotation enabled:|r %.2f° per beam", anglePerStep))
+        else
+            print("|cff888888Beam Auto-Rotation disabled.|r")
+        end
+    end)
+    frame.beamAutoRotateCheck = beamCheck
+    
+    -- Add tooltip to Beam Auto-Rotation checkbox
+    beamCheck:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Beam Auto-Rotation", 1, 1, 1)
+        local db = SpiralStairsDB or defaults
+        local anglePerStep = CalculateAnglePerStep(db.totalRotation, db.numSteps)
+        GameTooltip:AddLine(string_format("When enabled, beams should be placed with %.2f° rotation increment.", anglePerStep), nil, nil, nil, true)
+        GameTooltip:AddLine(" ", nil, nil, nil, true)
+        GameTooltip:AddLine("This matches the rotation interval of each stair step.", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    beamCheck:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
+    end)
+    
+    yOffset = yOffset - 35
+
     -- Buttons
     local resetBtn = CreateButton(frame, nil, "Reset Defaults", 280, 24)
     resetBtn:SetPoint("TOPLEFT", 20, yOffset)
@@ -465,6 +506,7 @@ function SS:RefreshConfigUI()
     frame.stepsRow.valueBox:SetText(string_format("%d", db.numSteps))
 
     frame.directionCheck:SetChecked(db.clockwise)
+    frame.beamAutoRotateCheck:SetChecked(db.beamAutoRotate)
 end
 
 --- Toggle the config frame visibility
@@ -660,6 +702,28 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         SpiralStairsDB.clockwise = false
         SS:CalculateStairs()
         print("|cff00ff00Direction set to counter-clockwise.|r")
+    elseif cmd == "beam" or cmd == "beamrotate" then
+        if arg == "on" or arg == "enable" or arg == "true" or arg == "1" then
+            SpiralStairsDB.beamAutoRotate = true
+            local anglePerStep = CalculateAnglePerStep(SpiralStairsDB.totalRotation, SpiralStairsDB.numSteps)
+            print(string_format("|cff00ff00Beam Auto-Rotation enabled:|r %.2f° per beam", anglePerStep))
+        elseif arg == "off" or arg == "disable" or arg == "false" or arg == "0" then
+            SpiralStairsDB.beamAutoRotate = false
+            print("|cff888888Beam Auto-Rotation disabled.|r")
+        else
+            -- Toggle if no argument
+            SpiralStairsDB.beamAutoRotate = not SpiralStairsDB.beamAutoRotate
+            local anglePerStep = CalculateAnglePerStep(SpiralStairsDB.totalRotation, SpiralStairsDB.numSteps)
+            if SpiralStairsDB.beamAutoRotate then
+                print(string_format("|cff00ff00Beam Auto-Rotation enabled:|r %.2f° per beam", anglePerStep))
+            else
+                print("|cff888888Beam Auto-Rotation disabled.|r")
+            end
+        end
+        -- Refresh UI if it's open
+        if SS.configFrame and SS.configFrame:IsShown() then
+            SS:RefreshConfigUI()
+        end
     elseif cmd == "help" then
         print("|cff00ff00=== Spiral Staircase Helper ===|r")
         print("|cffffcc00/stairs|r - Open config window")
@@ -671,6 +735,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         print("|cffffcc00/stairs rotation <n>|r - Set total rotation (degrees)")
         print("|cffffcc00/stairs steps <n>|r - Set num steps")
         print("|cffffcc00/stairs cw|ccw|r - Set direction")
+        print("|cffffcc00/stairs beam [on|off]|r - Toggle/set beam auto-rotation")
     elseif cmd == "debug" then
         print("|cff00ff00Debug info:|r")
         print("SpiralStairsDB exists: " .. tostring(SpiralStairsDB ~= nil))
