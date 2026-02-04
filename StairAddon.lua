@@ -30,15 +30,23 @@ SS.stairs = {}
 -- Core Calculation Functions
 -- ============================================================================
 
+--- Calculate angle per step based on total rotation and number of steps
+local function CalculateAnglePerStep(totalRotation, numSteps)
+    -- For a single step, no rotation is needed
+    if numSteps <= 1 then
+        return 0
+    end
+    -- For multiple steps, distribute rotation across the intervals
+    return totalRotation / (numSteps - 1)
+end
+
 --- Calculate all stair positions based on current settings
 function SS:CalculateStairs()
     self.stairs = {}
     local db = SpiralStairsDB or defaults
 
     local direction = db.clockwise and 1 or -1
-    
-    -- Calculate angle per step based on total rotation and number of steps
-    local anglePerStep = db.totalRotation / math.max(1, db.numSteps - 1)
+    local anglePerStep = CalculateAnglePerStep(db.totalRotation, db.numSteps)
 
     for i = 1, db.numSteps do
         local stepIndex = i - 1
@@ -73,7 +81,7 @@ function SS:PrintStairPositions()
     end
 
     local db = SpiralStairsDB or defaults
-    local anglePerStep = db.totalRotation / math.max(1, db.numSteps - 1)
+    local anglePerStep = CalculateAnglePerStep(db.totalRotation, db.numSteps)
     
     print("|cff00ff00=== Spiral Staircase Positions ===|r")
     print(string_format("Radius: %.2f | Height/Step: %.2f | Total Rotation: %d°",
