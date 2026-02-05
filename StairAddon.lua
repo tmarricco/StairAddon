@@ -17,6 +17,31 @@ local defaults = {
     buttonPos = nil,        -- Position of the Edit Mode button {point, x, y}
     selectedBeamIndex = 1,  -- Index of selected beam type
     originalRotation = 0,   -- Original rotation of first beam when placed (degrees)
+    stairStyle = 1,         -- Index of selected stair style (1 = Base, 2 = Gradual, 3 = Regal)
+}
+
+-- Stair style definitions
+-- Defines how beams are configured for different stair styles
+-- All styles assume one floor = 6.0 height units (12 beams at 0.5 height per step)
+local STAIR_STYLES = {
+    {
+        name = "Base",
+        description = "Standard stairs with 12 beams",
+        numSteps = 12,
+        heightPerStep = 0.5,  -- 12 * 0.5 = 6.0 (one floor)
+    },
+    {
+        name = "Gradual",
+        description = "Gradual stairs with 16 beams and overlap",
+        numSteps = 16,
+        heightPerStep = 0.375,  -- 16 * 0.375 = 6.0 (one floor), beams overlap by 25%
+    },
+    {
+        name = "Regal",
+        description = "Regal stairs with 24 beams at 75% tread depth",
+        numSteps = 24,
+        heightPerStep = 0.25,  -- 24 * 0.25 = 6.0 (one floor), 75% visible tread
+    },
 }
 
 -- Beam platform items for building stairs
@@ -61,6 +86,29 @@ local function CalculateAnglePerStep(totalRotation, numSteps)
     end
     -- For multiple steps, distribute rotation across the intervals
     return totalRotation / (numSteps - 1)
+end
+
+--- Apply stair style settings to override numSteps and heightPerStep
+--- @param styleIndex number The index of the stair style (1-3)
+function SS:ApplyStairStyle(styleIndex)
+    local db = SpiralStairsDB or defaults
+    
+    -- Ensure styleIndex is valid
+    if styleIndex < 1 or styleIndex > #STAIR_STYLES then
+        styleIndex = 1  -- Default to Base style
+    end
+    
+    local style = STAIR_STYLES[styleIndex]
+    
+    -- Override numSteps and heightPerStep based on selected style
+    db.numSteps = style.numSteps
+    db.heightPerStep = style.heightPerStep
+    db.stairStyle = styleIndex
+    
+    -- Refresh UI if it exists
+    if self.configFrame and self.configFrame:IsShown() then
+        self:RefreshConfigUI()
+    end
 end
 
 --- Calculate all stair positions based on current settings
@@ -393,10 +441,59 @@ local function CreateCheckbox(parent, name, label)
     return check
 end
 
+local function CreateStairStyleRow(parent, yPos)
+    local labelText = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    labelText:SetPoint("TOPLEFT", 20, yPos)
+    labelText:SetText("Stair Style:")
+    labelText:SetWidth(100)
+    labelText:SetJustifyH("LEFT")
+    
+    -- Create buttons for each style
+    local buttons = {}
+    local buttonWidth = 75
+    local buttonSpacing = 5
+    local startX = 125
+    
+    for i, style in ipairs(STAIR_STYLES) do
+        local btn = CreateButton(parent, nil, style.name, buttonWidth, 22)
+        btn:SetPoint("TOPLEFT", startX + (i - 1) * (buttonWidth + buttonSpacing), yPos)
+        btn:SetScript("OnClick", function()
+            SS:ApplyStairStyle(i)
+            SS:CalculateStairs()
+            -- Update button states
+            for j, b in ipairs(buttons) do
+                if j == i then
+                    b:Disable()
+                else
+                    b:Enable()
+                end
+            end
+        end)
+        
+        -- Add tooltip
+        btn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(style.name, 1, 1, 1)
+            GameTooltip:AddLine(style.description, nil, nil, nil, true)
+            GameTooltip:AddLine(" ", nil, nil, nil, true)
+            GameTooltip:AddLine(string_format("Steps: %d", style.numSteps), nil, nil, nil, true)
+            GameTooltip:AddLine(string_format("Height/Step: %.2f", style.heightPerStep), nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        btn:SetScript("OnLeave", function(self)
+            GameTooltip:Hide()
+        end)
+        
+        buttons[i] = btn
+    end
+    
+    return buttons
+end
+
 local function CreateConfigFrame()
     -- Main frame
     local frame = CreateFrame("Frame", "SpiralStairsConfigFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(320, 420)
+    frame:SetSize(320, 450)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -425,6 +522,10 @@ local function CreateConfigFrame()
 
     local yOffset = -45
     local db = SpiralStairsDB or defaults
+
+    -- Add stair style selector
+    frame.styleButtons = CreateStairStyleRow(frame, yOffset)
+    yOffset = yOffset - 35
 
     -- Helper to create a labeled slider row
     local function CreateSliderRow(label, dbKey, minVal, maxVal, step, isInteger)
@@ -624,6 +725,18 @@ function SS:RefreshConfigUI()
     if not frame then return end
 
     local db = SpiralStairsDB or defaults
+
+    -- Update style buttons
+    if frame.styleButtons then
+        local currentStyle = db.stairStyle or 1
+        for i, btn in ipairs(frame.styleButtons) do
+            if i == currentStyle then
+                btn:Disable()
+            else
+                btn:Enable()
+            end
+        end
+    end
 
     -- Update sliders and their associated edit boxes
     frame.radiusRow.slider:SetValue(db.radius)
@@ -844,6 +957,25 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         SpiralStairsDB.clockwise = false
         SS:CalculateStairs()
         print("|cff00ff00Direction set to counter-clockwise.|r")
+    elseif cmd == "style" and arg ~= "" then
+        local styleArg = arg:lower()
+        local styleIndex = nil
+        if styleArg == "base" then
+            styleIndex = 1
+        elseif styleArg == "gradual" then
+            styleIndex = 2
+        elseif styleArg == "regal" then
+            styleIndex = 3
+        end
+        
+        if styleIndex then
+            SS:ApplyStairStyle(styleIndex)
+            SS:CalculateStairs()
+            print(string_format("|cff00ff00Stair style set to: %s|r", STAIR_STYLES[styleIndex].name))
+            print(string_format("  Steps: %d, Height/Step: %.2f", STAIR_STYLES[styleIndex].numSteps, STAIR_STYLES[styleIndex].heightPerStep))
+        else
+            print("|cffff0000Invalid style. Use: base, gradual, or regal|r")
+        end
     elseif cmd == "start" or cmd == "begin" then
         SS:StartBuildMode()
     elseif cmd == "stop" or cmd == "end" then
@@ -864,6 +996,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         print("|cffffcc00/stairs original <n>|r - Set original rotation (degrees)")
         print("|cffffcc00/stairs steps <n>|r - Set num steps")
         print("|cffffcc00/stairs cw|ccw|r - Set direction")
+        print("|cffffcc00/stairs style <base|gradual|regal>|r - Set stair style")
         print("|cff00ff00--- Build Mode ------|r")
         print("|cffffcc00/stairs start|r - Start spiral build mode")
         print("|cffffcc00/stairs stop|r - Stop spiral build mode")
