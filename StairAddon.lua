@@ -1066,9 +1066,71 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
             print("Steps: " .. tostring(SpiralStairsDB.numSteps))
             print("Total Rotation: " .. tostring(SpiralStairsDB.totalRotation))
         end
+        -- Check for housing-related frames
+        print("|cff00ff00Housing frames check:|r")
+        local frameNames = {
+            "HousingDecorFrame", "HousingDecorPlacementFrame", "PlayerHousingFrame",
+            "HousingEditorFrame", "HousingUI", "DecorPlacementFrame",
+            "HousingEditFrame", "HousingFrame", "DecorFrame"
+        }
+        for _, name in ipairs(frameNames) do
+            local frame = _G[name]
+            if frame then
+                print("  " .. name .. ": |cff00ff00EXISTS|r (shown: " .. tostring(frame:IsShown()) .. ")")
+            end
+        end
+        -- Check C_Housing API
+        if C_Housing then
+            print("C_Housing API: |cff00ff00Available|r")
+        else
+            print("C_Housing API: |cffff0000Not found|r")
+        end
     else
         print("|cffff0000Unknown command. Type /stairs help|r")
     end
+end
+
+-- ============================================================================
+-- Housing Edit Mode Detection
+-- ============================================================================
+
+-- Try to hook into Blizzard's housing UI frames
+local function SetupHousingFrameHooks()
+    -- List of possible Blizzard housing frame names to try
+    local housingFrameNames = {
+        "HousingDecorFrame",
+        "HousingDecorPlacementFrame",
+        "PlayerHousingFrame",
+        "HousingEditorFrame",
+        "HousingUI",
+        "DecorPlacementFrame",
+    }
+
+    local hookedFrame = nil
+
+    for _, frameName in ipairs(housingFrameNames) do
+        local frame = _G[frameName]
+        if frame then
+            -- Found a housing frame, hook into its Show/Hide
+            frame:HookScript("OnShow", function()
+                if SS.editModeButton then
+                    SS.editModeButton:Show()
+                end
+            end)
+            frame:HookScript("OnHide", function()
+                if SS.editModeButton then
+                    SS.editModeButton:Hide()
+                end
+                if buildState.active then
+                    SS:StopBuildMode()
+                end
+            end)
+            hookedFrame = frameName
+            break
+        end
+    end
+
+    return hookedFrame
 end
 
 -- ============================================================================
@@ -1079,10 +1141,6 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("PLAYER_HOUSING_EDIT_MODE_START")
-eventFrame:RegisterEvent("PLAYER_HOUSING_EDIT_MODE_END")
--- Register for decoration placement events
-eventFrame:RegisterEvent("PLAYER_HOUSING_DECOR_PLACED")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
@@ -1091,44 +1149,34 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
 
         -- Calculate initial stairs
         SS:CalculateStairs()
-        
+
         -- Create the Edit Mode button
         CreateEditModeButton()
 
-    elseif event == "PLAYER_LOGIN" then
-        print("|cff00ff00Spiral Staircase Helper|r loaded. Type |cffffcc00/stairs|r for options.")
-    
-    elseif event == "PLAYER_ENTERING_WORLD" then
-        -- Ensure addon is initialized when entering edit mode or any zone
-        -- This handles cases where the player enters housing edit mode
-        InitializeDatabase()
-        
-        -- Recalculate stairs to ensure data is fresh when zoning
-        -- Note: This is intentionally called on every zone transition for simplicity.
-        -- The calculation is lightweight (O(n) where n is typically 12-36 steps)
-        -- and zone transitions are infrequent, so performance impact is negligible.
-        SS:CalculateStairs()
-    
-    elseif event == "PLAYER_HOUSING_EDIT_MODE_START" then
-        -- Show the Edit Mode button when entering housing edit mode
-        if SS.editModeButton then
-            SS.editModeButton:Show()
-        end
-    
-    elseif event == "PLAYER_HOUSING_EDIT_MODE_END" then
-        -- Hide the Edit Mode button when exiting housing edit mode
-        if SS.editModeButton then
-            SS.editModeButton:Hide()
-        end
-        -- Stop build mode when leaving edit mode
-        if buildState.active then
-            SS:StopBuildMode()
+        -- Try to hook into housing frames
+        local hookedFrame = SetupHousingFrameHooks()
+        if hookedFrame then
+            -- Successfully hooked
         end
 
-    elseif event == "PLAYER_HOUSING_DECOR_PLACED" then
-        -- Auto-advance to next step when a decoration is placed during build mode
-        if buildState.active then
-            SS:AdvanceStep()
-        end
+    elseif event == "PLAYER_LOGIN" then
+        print("|cff00ff00Spiral Staircase Helper|r loaded. Type |cffffcc00/stairs|r or |cffffcc00/stairs button|r")
+
+        -- Delayed attempt to hook housing frames (they might load later)
+        C_Timer.After(2, function()
+            SetupHousingFrameHooks()
+        end)
+
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        -- Ensure addon is initialized when entering edit mode or any zone
+        InitializeDatabase()
+
+        -- Recalculate stairs to ensure data is fresh when zoning
+        SS:CalculateStairs()
+
+        -- Try to hook housing frames again (in case they weren't available before)
+        C_Timer.After(1, function()
+            SetupHousingFrameHooks()
+        end)
     end
 end)
