@@ -581,7 +581,6 @@ local function ComputeBridgeAngles(segmentCount, archwayType)
     elseif archwayType == 2 then
         -- Elven: Gradual dome with flat 15% at each end
         local flatPercent = 0.15
-        local flatSegments = math_floor(segmentCount * flatPercent)
         
         for i = 1, segmentCount do
             local normalizedPos = (i - 1) / (segmentCount - 1)  -- 0 to 1
