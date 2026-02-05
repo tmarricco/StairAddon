@@ -885,7 +885,7 @@ local function CreateConfigFrame()
     angleScrollFrame:SetPoint("TOPLEFT", 20, archwayYOffset)
     angleScrollFrame:SetSize(280, 250)
     
-    -- Calculate scroll child height dynamically (24 segments max * ~15px per line + padding)
+    -- Scroll child height set to accommodate max segments (24 segments * ~15px per line + padding)
     local angleScrollChild = CreateFrame("Frame", nil, angleScrollFrame)
     angleScrollChild:SetSize(260, 400)
     angleScrollFrame:SetScrollChild(angleScrollChild)
@@ -927,7 +927,7 @@ local function CreateConfigFrame()
     end)
     
     -- Initialize tab state
-    SwitchToTab(db.activeTabPage or 1)
+    SwitchToTab(db.activeTabPage or defaults.activeTabPage)
 
     frame:Hide()
     SS.configFrame = frame
@@ -990,7 +990,7 @@ function SS:RefreshConfigUI()
     
     -- Update tab state
     if frame.switchToTabFunc then
-        frame.switchToTabFunc(db.activeTabPage or 1)
+        frame.switchToTabFunc(db.activeTabPage or defaults.activeTabPage)
     end
 end
 
