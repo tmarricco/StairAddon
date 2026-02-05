@@ -15,6 +15,24 @@ local defaults = {
     numSteps = 12,          -- Total number of stairs
     clockwise = true,       -- Direction of spiral
     buttonPos = nil,        -- Position of the Edit Mode button {point, x, y}
+    selectedBeamIndex = 1,  -- Index of selected beam type
+}
+
+-- Common beam/plank furniture items for stairs
+-- Users can customize this list with their preferred items
+local BEAM_TYPES = {
+    { name = "Wooden Plank", itemID = nil },      -- Placeholder - update with actual item IDs
+    { name = "Stone Slab", itemID = nil },
+    { name = "Metal Grate", itemID = nil },
+    { name = "Carved Step", itemID = nil },
+    { name = "Rustic Board", itemID = nil },
+}
+
+-- Spiral build mode state
+local buildState = {
+    active = false,         -- Whether spiral build mode is active
+    currentStep = 1,        -- Current step being placed (1-based)
+    lastRotation = 0,       -- Last rotation value applied
 }
 
 -- Addon namespace
@@ -115,6 +133,154 @@ function SS:PrintSingleStep(stepNum)
 end
 
 -- ============================================================================
+-- Spiral Build Mode Functions
+-- ============================================================================
+
+--- Get the current rotation for the active step
+function SS:GetCurrentStepRotation()
+    if #self.stairs == 0 then
+        self:CalculateStairs()
+    end
+    local stair = self.stairs[buildState.currentStep]
+    if stair then
+        return stair.rotation
+    end
+    return 0
+end
+
+--- Start spiral build mode
+function SS:StartBuildMode()
+    if buildState.active then
+        print("|cffffcc00Spiral build mode is already active.|r")
+        return
+    end
+
+    buildState.active = true
+    buildState.currentStep = 1
+    self:CalculateStairs()
+
+    local rotation = self:GetCurrentStepRotation()
+    buildState.lastRotation = rotation
+
+    print("|cff00ff00Spiral build mode started!|r")
+    print(string_format("|cffffcc00Step 1/%d:|r Set rotation to |cff00ffff%d°|r and place your item.",
+        SpiralStairsDB.numSteps, rotation))
+
+    self:UpdateBuildModeUI()
+end
+
+--- Stop spiral build mode
+function SS:StopBuildMode()
+    if not buildState.active then
+        print("|cffffcc00Spiral build mode is not active.|r")
+        return
+    end
+
+    buildState.active = false
+    buildState.currentStep = 1
+
+    print("|cff00ff00Spiral build mode stopped.|r")
+
+    self:UpdateBuildModeUI()
+end
+
+--- Advance to the next step in build mode
+function SS:AdvanceStep()
+    if not buildState.active then
+        print("|cffff0000Spiral build mode is not active. Use /stairs start|r")
+        return
+    end
+
+    local db = SpiralStairsDB or defaults
+
+    if buildState.currentStep >= db.numSteps then
+        print("|cff00ff00All steps complete! Spiral staircase finished.|r")
+        self:StopBuildMode()
+        return
+    end
+
+    buildState.currentStep = buildState.currentStep + 1
+    local rotation = self:GetCurrentStepRotation()
+    buildState.lastRotation = rotation
+
+    print(string_format("|cffffcc00Step %d/%d:|r Set rotation to |cff00ffff%d°|r and place your item.",
+        buildState.currentStep, db.numSteps, rotation))
+
+    self:UpdateBuildModeUI()
+end
+
+--- Go back to the previous step in build mode
+function SS:PreviousStep()
+    if not buildState.active then
+        print("|cffff0000Spiral build mode is not active. Use /stairs start|r")
+        return
+    end
+
+    if buildState.currentStep <= 1 then
+        print("|cffffcc00Already at step 1.|r")
+        return
+    end
+
+    buildState.currentStep = buildState.currentStep - 1
+    local rotation = self:GetCurrentStepRotation()
+    buildState.lastRotation = rotation
+
+    local db = SpiralStairsDB or defaults
+    print(string_format("|cffffcc00Step %d/%d:|r Set rotation to |cff00ffff%d°|r",
+        buildState.currentStep, db.numSteps, rotation))
+
+    self:UpdateBuildModeUI()
+end
+
+--- Update the build mode UI elements
+function SS:UpdateBuildModeUI()
+    if not self.configFrame then return end
+
+    local frame = self.configFrame
+    local db = SpiralStairsDB or defaults
+
+    if buildState.active then
+        if frame.buildStatusText then
+            frame.buildStatusText:SetText(string_format(
+                "|cff00ff00BUILDING|r - Step %d/%d\nRotation: |cff00ffff%d°|r",
+                buildState.currentStep, db.numSteps, self:GetCurrentStepRotation()))
+        end
+        if frame.startBuildBtn then
+            frame.startBuildBtn:SetText("Stop Building")
+        end
+        if frame.nextStepBtn then
+            frame.nextStepBtn:Enable()
+        end
+        if frame.prevStepBtn then
+            frame.prevStepBtn:Enable()
+        end
+    else
+        if frame.buildStatusText then
+            frame.buildStatusText:SetText("|cff888888Not building|r\nPress Start to begin")
+        end
+        if frame.startBuildBtn then
+            frame.startBuildBtn:SetText("Start Building")
+        end
+        if frame.nextStepBtn then
+            frame.nextStepBtn:Disable()
+        end
+        if frame.prevStepBtn then
+            frame.prevStepBtn:Disable()
+        end
+    end
+end
+
+--- Check if build mode is active
+function SS:IsBuildModeActive()
+    return buildState.active
+end
+
+--- Get current build state
+function SS:GetBuildState()
+    return buildState
+end
+
+-- ============================================================================
 -- Configuration UI (Built without templates for compatibility)
 -- ============================================================================
 
@@ -187,6 +353,125 @@ local function CreateButton(parent, name, text, width, height)
     return button
 end
 
+local function CreateDropdown(parent, name, width)
+    local dropdown = CreateFrame("Frame", name, parent, "BackdropTemplate")
+    dropdown:SetSize(width or 150, 25)
+
+    dropdown:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 }
+    })
+    dropdown:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+
+    -- Selected text display
+    local selectedText = dropdown:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    selectedText:SetPoint("LEFT", 10, 0)
+    selectedText:SetPoint("RIGHT", -25, 0)
+    selectedText:SetJustifyH("LEFT")
+    dropdown.selectedText = selectedText
+
+    -- Dropdown arrow button
+    local arrowBtn = CreateFrame("Button", nil, dropdown)
+    arrowBtn:SetSize(20, 20)
+    arrowBtn:SetPoint("RIGHT", -3, 0)
+    arrowBtn:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+    arrowBtn:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
+    arrowBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+
+    -- Dropdown menu frame
+    local menuFrame = CreateFrame("Frame", nil, dropdown, "BackdropTemplate")
+    menuFrame:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
+    menuFrame:SetPoint("TOPRIGHT", dropdown, "BOTTOMRIGHT", 0, -2)
+    menuFrame:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 }
+    })
+    menuFrame:SetBackdropColor(0.1, 0.1, 0.1, 0.95)
+    menuFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+    menuFrame:Hide()
+    dropdown.menuFrame = menuFrame
+
+    dropdown.items = {}
+    dropdown.selectedIndex = 1
+    dropdown.OnSelectCallback = nil
+
+    function dropdown:SetItems(items)
+        -- Clear existing items
+        for _, item in ipairs(self.items) do
+            item:Hide()
+            item:SetParent(nil)
+        end
+        self.items = {}
+
+        local yOffset = -5
+        for i, itemData in ipairs(items) do
+            local itemBtn = CreateFrame("Button", nil, menuFrame)
+            itemBtn:SetSize(width - 10, 20)
+            itemBtn:SetPoint("TOPLEFT", 5, yOffset)
+
+            local itemText = itemBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            itemText:SetPoint("LEFT", 5, 0)
+            itemText:SetText(itemData.name)
+            itemBtn.text = itemText
+
+            itemBtn:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+
+            itemBtn:SetScript("OnClick", function()
+                self.selectedIndex = i
+                self.selectedText:SetText(itemData.name)
+                menuFrame:Hide()
+                if self.OnSelectCallback then
+                    self.OnSelectCallback(i, itemData)
+                end
+            end)
+
+            table.insert(self.items, itemBtn)
+            yOffset = yOffset - 20
+        end
+
+        menuFrame:SetHeight(math.abs(yOffset) + 10)
+
+        -- Set initial selection
+        if items[self.selectedIndex] then
+            self.selectedText:SetText(items[self.selectedIndex].name)
+        end
+    end
+
+    function dropdown:SetSelectedIndex(index)
+        self.selectedIndex = index
+        if BEAM_TYPES[index] then
+            self.selectedText:SetText(BEAM_TYPES[index].name)
+        end
+    end
+
+    -- Toggle menu on click
+    local function ToggleMenu()
+        if menuFrame:IsShown() then
+            menuFrame:Hide()
+        else
+            menuFrame:Show()
+        end
+    end
+
+    arrowBtn:SetScript("OnClick", ToggleMenu)
+    dropdown:SetScript("OnMouseDown", ToggleMenu)
+
+    -- Close menu when clicking elsewhere
+    menuFrame:SetScript("OnShow", function()
+        menuFrame:SetFrameLevel(dropdown:GetFrameLevel() + 10)
+    end)
+
+    return dropdown
+end
+
 local function CreateCheckbox(parent, name, label)
     local check = CreateFrame("CheckButton", name, parent)
     check:SetSize(26, 26)
@@ -223,7 +508,7 @@ end
 local function CreateConfigFrame()
     -- Main frame
     local frame = CreateFrame("Frame", "SpiralStairsConfigFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(320, 300)
+    frame:SetSize(320, 420)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -438,6 +723,76 @@ local function CreateConfigFrame()
     printBtn:SetScript("OnLeave", function(self)
         GameTooltip:Hide()
     end)
+
+    yOffset = yOffset - 35
+
+    -- Separator line
+    local separator = frame:CreateTexture(nil, "ARTWORK")
+    separator:SetHeight(1)
+    separator:SetPoint("TOPLEFT", 15, yOffset)
+    separator:SetPoint("TOPRIGHT", -15, yOffset)
+    separator:SetColorTexture(0.5, 0.5, 0.5, 0.5)
+    yOffset = yOffset - 10
+
+    -- Build Mode Section Title
+    local buildTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    buildTitle:SetPoint("TOPLEFT", 20, yOffset)
+    buildTitle:SetText("|cff00ff00Spiral Build Mode|r")
+    yOffset = yOffset - 25
+
+    -- Beam Type Dropdown
+    local beamLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    beamLabel:SetPoint("TOPLEFT", 20, yOffset)
+    beamLabel:SetText("Beam Type:")
+
+    local beamDropdown = CreateDropdown(frame, "SpiralStairsBeamDropdown", 170)
+    beamDropdown:SetPoint("TOPLEFT", 110, yOffset + 3)
+    beamDropdown:SetItems(BEAM_TYPES)
+    beamDropdown:SetSelectedIndex(SpiralStairsDB.selectedBeamIndex or 1)
+    beamDropdown.OnSelectCallback = function(index, itemData)
+        SpiralStairsDB.selectedBeamIndex = index
+    end
+    frame.beamDropdown = beamDropdown
+    yOffset = yOffset - 35
+
+    -- Build status display
+    local buildStatusText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    buildStatusText:SetPoint("TOPLEFT", 20, yOffset)
+    buildStatusText:SetText("|cff888888Not building|r\nPress Start to begin")
+    buildStatusText:SetJustifyH("LEFT")
+    frame.buildStatusText = buildStatusText
+    yOffset = yOffset - 40
+
+    -- Start/Stop Build button
+    local startBuildBtn = CreateButton(frame, nil, "Start Building", 135, 24)
+    startBuildBtn:SetPoint("TOPLEFT", 20, yOffset)
+    startBuildBtn:SetScript("OnClick", function()
+        if buildState.active then
+            SS:StopBuildMode()
+        else
+            SS:StartBuildMode()
+        end
+    end)
+    frame.startBuildBtn = startBuildBtn
+
+    -- Next Step button
+    local nextStepBtn = CreateButton(frame, nil, "Next Step →", 125, 24)
+    nextStepBtn:SetPoint("TOPLEFT", 165, yOffset)
+    nextStepBtn:SetScript("OnClick", function()
+        SS:AdvanceStep()
+    end)
+    nextStepBtn:Disable()
+    frame.nextStepBtn = nextStepBtn
+    yOffset = yOffset - 28
+
+    -- Previous Step button
+    local prevStepBtn = CreateButton(frame, nil, "← Prev Step", 125, 24)
+    prevStepBtn:SetPoint("TOPLEFT", 165, yOffset)
+    prevStepBtn:SetScript("OnClick", function()
+        SS:PreviousStep()
+    end)
+    prevStepBtn:Disable()
+    frame.prevStepBtn = prevStepBtn
 
     frame:Hide()
     SS.configFrame = frame
@@ -660,6 +1015,14 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         SpiralStairsDB.clockwise = false
         SS:CalculateStairs()
         print("|cff00ff00Direction set to counter-clockwise.|r")
+    elseif cmd == "start" or cmd == "begin" then
+        SS:StartBuildMode()
+    elseif cmd == "stop" or cmd == "end" then
+        SS:StopBuildMode()
+    elseif cmd == "next" or cmd == "n" then
+        SS:AdvanceStep()
+    elseif cmd == "prev" or cmd == "p" or cmd == "back" then
+        SS:PreviousStep()
     elseif cmd == "help" then
         print("|cff00ff00=== Spiral Staircase Helper ===|r")
         print("|cffffcc00/stairs|r - Open config window")
@@ -671,6 +1034,11 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         print("|cffffcc00/stairs rotation <n>|r - Set total rotation (degrees)")
         print("|cffffcc00/stairs steps <n>|r - Set num steps")
         print("|cffffcc00/stairs cw|ccw|r - Set direction")
+        print("|cff00ff00--- Build Mode ------|r")
+        print("|cffffcc00/stairs start|r - Start spiral build mode")
+        print("|cffffcc00/stairs stop|r - Stop spiral build mode")
+        print("|cffffcc00/stairs next|r - Advance to next step")
+        print("|cffffcc00/stairs prev|r - Go back to previous step")
     elseif cmd == "debug" then
         print("|cff00ff00Debug info:|r")
         print("SpiralStairsDB exists: " .. tostring(SpiralStairsDB ~= nil))
@@ -695,6 +1063,8 @@ eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("PLAYER_HOUSING_EDIT_MODE_START")
 eventFrame:RegisterEvent("PLAYER_HOUSING_EDIT_MODE_END")
+-- Register for decoration placement events
+eventFrame:RegisterEvent("PLAYER_HOUSING_DECOR_PLACED")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
@@ -731,6 +1101,16 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         -- Hide the Edit Mode button when exiting housing edit mode
         if SS.editModeButton then
             SS.editModeButton:Hide()
+        end
+        -- Stop build mode when leaving edit mode
+        if buildState.active then
+            SS:StopBuildMode()
+        end
+
+    elseif event == "PLAYER_HOUSING_DECOR_PLACED" then
+        -- Auto-advance to next step when a decoration is placed during build mode
+        if buildState.active then
+            SS:AdvanceStep()
         end
     end
 end)
