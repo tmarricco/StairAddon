@@ -1038,10 +1038,29 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         print("|cffffcc00/stairs stop|r - Stop spiral build mode")
         print("|cffffcc00/stairs next|r - Advance to next step")
         print("|cffffcc00/stairs prev|r - Go back to previous step")
+        print("|cff00ff00--- Utility ------|r")
+        print("|cffffcc00/stairs button|r - Toggle the helper button")
+    elseif cmd == "button" or cmd == "show" then
+        -- Manually toggle the edit mode button visibility
+        if SS.editModeButton then
+            if SS.editModeButton:IsShown() then
+                SS.editModeButton:Hide()
+                print("|cff00ff00Stairs Helper button hidden.|r")
+            else
+                SS.editModeButton:Show()
+                print("|cff00ff00Stairs Helper button shown.|r")
+            end
+        else
+            print("|cffff0000Button not created yet. Try reloading UI.|r")
+        end
     elseif cmd == "debug" then
         print("|cff00ff00Debug info:|r")
         print("SpiralStairsDB exists: " .. tostring(SpiralStairsDB ~= nil))
         print("Config frame exists: " .. tostring(SS.configFrame ~= nil))
+        print("Edit mode button exists: " .. tostring(SS.editModeButton ~= nil))
+        if SS.editModeButton then
+            print("Edit mode button shown: " .. tostring(SS.editModeButton:IsShown()))
+        end
         if SpiralStairsDB then
             print("Radius: " .. tostring(SpiralStairsDB.radius))
             print("Steps: " .. tostring(SpiralStairsDB.numSteps))
