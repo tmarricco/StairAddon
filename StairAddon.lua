@@ -475,7 +475,7 @@ local function CreateStairStyleRow(parent, yPos)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:SetText(style.name, 1, 1, 1)
             GameTooltip:AddLine(style.description, nil, nil, nil, true)
-            GameTooltip:AddLine(" ", nil, nil, nil, true)
+            GameTooltip:AddLine("", 1, 1, 1)  -- Empty line for spacing
             GameTooltip:AddLine(string_format("Steps: %d", style.numSteps), nil, nil, nil, true)
             GameTooltip:AddLine(string_format("Height/Step: %.2f", style.heightPerStep), nil, nil, nil, true)
             GameTooltip:Show()
