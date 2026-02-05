@@ -53,15 +53,15 @@ local STAIR_STYLES = {
 local ARCHWAY_TYPES = {
     {
         name = "Human",
-        description = "Standard semicircular arch path (180° arc)",
+        description = "Gradual archway above grade (180° arc)",
     },
     {
         name = "Elven",
-        description = "Gradual dome with flat 15% sections at each end",
+        description = "First 15% and last 15% level with gradual dome in middle",
     },
     {
-        name = "Drawbridge",
-        description = "Slight downward curvature across entire length",
+        name = "Regal",
+        description = "Gradual archway with sharp peak at center",
     },
 }
 
@@ -602,14 +602,24 @@ local function ComputeBridgeAngles(segmentCount, archwayType)
         end
         
     elseif archwayType == 3 then
-        -- Drawbridge: Slight downward curvature across entire length
+        -- Regal: Gradual archway with sharp peak at center
+        -- Creates a pointed/Gothic arch with cubic easing for sharp peak
         for i = 1, segmentCount do
             local normalizedPos = (i - 1) / (segmentCount - 1)  -- 0 to 1
-            -- Parabolic curve: starts at 0, dips down in middle, returns to 0
-            -- Using inverted parabola: -4 * (x - 0.5)^2 + 1, scaled by -15 degrees
-            local centerOffset = normalizedPos - 0.5
-            local angle = -15 * (1 - 4 * centerOffset * centerOffset)
-            angles[i] = angle
+            
+            if normalizedPos <= 0.5 then
+                -- Left side: gradual rise with acceleration toward center
+                local leftProgress = normalizedPos * 2  -- Map 0-0.5 to 0-1
+                -- Use cubic easing for gradual start, sharp approach to peak
+                local angle = -90 + (180 * leftProgress * leftProgress * leftProgress)
+                angles[i] = angle
+            else
+                -- Right side: mirror with sharp descent from peak
+                local rightProgress = 1 - (normalizedPos - 0.5) * 2  -- Map 0.5-1 to 1-0
+                -- Use cubic easing for sharp peak, gradual end
+                local angle = 90 - (180 * rightProgress * rightProgress * rightProgress)
+                angles[i] = angle
+            end
         end
     end
     
