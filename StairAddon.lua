@@ -6,6 +6,7 @@ local addonName, addon = ...
 -- Configuration constants
 local MIN_ROTATION = 45      -- Minimum total rotation in degrees
 local MAX_ROTATION = 1080    -- Maximum total rotation in degrees (3 full rotations)
+local FLOOR_HEIGHT = 6.0     -- Standard floor-to-floor height in housing units
 
 -- Saved variables defaults
 local defaults = {
@@ -22,7 +23,7 @@ local defaults = {
 
 -- Stair style definitions
 -- Defines how beams are configured for different stair styles
--- All styles assume one floor = 6.0 height units (12 beams at 0.5 height per step)
+-- All styles are calculated to reach FLOOR_HEIGHT (6.0 units) from one floor to the next
 local STAIR_STYLES = {
     {
         name = "Base",
@@ -475,7 +476,7 @@ local function CreateStairStyleRow(parent, yPos)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:SetText(style.name, 1, 1, 1)
             GameTooltip:AddLine(style.description, 1, 0.82, 0, true)
-            GameTooltip:AddLine(" ", 1, 1, 1, true)  -- Spacing line
+            GameTooltip:AddLine(" ")  -- Blank line for visual spacing
             GameTooltip:AddLine(string_format("Steps: %d", style.numSteps), 1, 1, 1, true)
             GameTooltip:AddLine(string_format("Height/Step: %.2f", style.heightPerStep), 1, 1, 1, true)
             GameTooltip:Show()
