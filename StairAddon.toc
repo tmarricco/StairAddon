@@ -1,4 +1,4 @@
-## Interface: 120000
+## Interface: 110105
 ## Title: Spiral Staircase Helper
 ## Notes: Helps calculate and visualize positions for building spiral staircases in player housing
 ## Author: Player
