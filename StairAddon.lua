@@ -451,46 +451,38 @@ local function CreateStairStyleRow(parent, yPos)
     labelText:SetWidth(100)
     labelText:SetJustifyH("LEFT")
     
-    -- Create buttons for each style
-    local buttons = {}
-    local buttonWidth = 60
-    local buttonSpacing = 5
-    local startX = 125
+    -- Create dropdown menu
+    local dropdown = CreateFrame("Frame", "SpiralStairsStyleDropdown", parent, "UIDropDownMenuTemplate")
+    dropdown:SetPoint("TOPLEFT", 110, yPos + 5)
+    UIDropDownMenu_SetWidth(dropdown, 180)
     
-    for i, style in ipairs(STAIR_STYLES) do
-        local btn = CreateButton(parent, nil, style.name, buttonWidth, 22)
-        btn:SetPoint("TOPLEFT", startX + (i - 1) * (buttonWidth + buttonSpacing), yPos)
-        btn:SetScript("OnClick", function()
-            SS:ApplyStairStyle(i)
-            SS:CalculateStairs()
-            -- Update button states
-            for j, b in ipairs(buttons) do
-                if j == i then
-                    b:Disable()
-                else
-                    b:Enable()
-                end
+    -- Initialize dropdown
+    UIDropDownMenu_Initialize(dropdown, function(self, level)
+        local info = UIDropDownMenu_CreateInfo()
+        
+        for i, style in ipairs(STAIR_STYLES) do
+            info.text = style.name
+            info.value = i
+            info.func = function()
+                SS:ApplyStairStyle(i)
+                SS:CalculateStairs()
+                UIDropDownMenu_SetSelectedValue(dropdown, i)
             end
-        end)
-        
-        -- Add tooltip
-        btn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:SetText(style.name, 1, 1, 1)
-            GameTooltip:AddLine(style.description, 1, 0.82, 0, true)
-            GameTooltip:AddLine(" ")  -- Blank line for visual spacing
-            GameTooltip:AddLine(string_format("Steps: %d", style.numSteps), 1, 1, 1, true)
-            GameTooltip:AddLine(string_format("Height/Step: %.2f", style.heightPerStep), 1, 1, 1, true)
-            GameTooltip:Show()
-        end)
-        btn:SetScript("OnLeave", function(self)
-            GameTooltip:Hide()
-        end)
-        
-        buttons[i] = btn
-    end
+            info.checked = (SpiralStairsDB.stairStyle == i)
+            
+            -- Add tooltip info
+            info.tooltipTitle = style.name
+            info.tooltipText = style.description .. "\n\nSteps: " .. style.numSteps .. "\nHeight/Step: " .. string_format("%.2f", style.heightPerStep)
+            info.tooltipOnButton = true
+            
+            UIDropDownMenu_AddButton(info)
+        end
+    end)
     
-    return buttons
+    -- Set initial selection
+    UIDropDownMenu_SetSelectedValue(dropdown, SpiralStairsDB.stairStyle or 1)
+    
+    return dropdown
 end
 
 --- Calculate Y-axis rotation angles for archway bridge segments
@@ -594,7 +586,7 @@ local function CreateConfigFrame()
     local yOffset = -5
 
     -- Add stair style selector
-    frame.styleButtons = CreateStairStyleRow(stairwayContainer, yOffset)
+    frame.styleDropdown = CreateStairStyleRow(stairwayContainer, yOffset)
     yOffset = yOffset - 35
 
     -- Helper to create a labeled slider row
@@ -941,16 +933,10 @@ function SS:RefreshConfigUI()
 
     local db = SpiralStairsDB or defaults
 
-    -- Update style buttons
-    if frame.styleButtons then
+    -- Update style dropdown
+    if frame.styleDropdown then
         local currentStyle = db.stairStyle or 1
-        for i, btn in ipairs(frame.styleButtons) do
-            if i == currentStyle then
-                btn:Disable()
-            else
-                btn:Enable()
-            end
-        end
+        UIDropDownMenu_SetSelectedValue(frame.styleDropdown, currentStyle)
     end
 
     -- Update sliders and their associated edit boxes
