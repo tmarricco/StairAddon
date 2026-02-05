@@ -19,6 +19,8 @@ local defaults = {
     selectedBeamIndex = 1,  -- Index of selected beam type
     originalRotation = 0,   -- Original rotation of first beam when placed (degrees)
     stairStyle = 1,         -- Index of selected stair style (1 = Base, 2 = Gradual, 3 = Regal)
+    activeTabPage = 1,      -- Which tab is currently active (1 = Stairway, 2 = Archway)
+    bridgeSegmentCount = 8, -- Number of segments for archway bridge (2-24)
 }
 
 -- Stair style definitions
@@ -491,6 +493,26 @@ local function CreateStairStyleRow(parent, yPos)
     return buttons
 end
 
+--- Calculate Y-axis rotation angles for archway bridge segments
+local function ComputeBridgeAngles(segmentCount)
+    local angles = {}
+    if segmentCount < 2 then
+        return angles
+    end
+    
+    -- Distribute 180 degrees across the segments for a semicircular arch
+    local totalArc = 180
+    local angleIncrement = totalArc / (segmentCount - 1)
+    
+    for i = 1, segmentCount do
+        -- Start at -90 (left side), end at +90 (right side)
+        local angle = -90 + (i - 1) * angleIncrement
+        angles[i] = angle
+    end
+    
+    return angles
+end
+
 local function CreateConfigFrame()
     -- Main frame
     local frame = CreateFrame("Frame", "SpiralStairsConfigFrame", UIParent, "BackdropTemplate")
@@ -515,34 +537,81 @@ local function CreateConfigFrame()
     -- Title
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -15)
-    title:SetText("Spiral Staircase Helper")
+    title:SetText("Beam Builder Helper")
 
     -- Close button
     local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", -5, -5)
 
-    local yOffset = -45
     local db = SpiralStairsDB or defaults
+    
+    -- Tab buttons
+    local tabButtonWidth = 150
+    local tabStairwayBtn = CreateButton(frame, nil, "Stairway", tabButtonWidth, 24)
+    tabStairwayBtn:SetPoint("TOPLEFT", 10, -40)
+    
+    local tabArchwayBtn = CreateButton(frame, nil, "Archway", tabButtonWidth, 24)
+    tabArchwayBtn:SetPoint("LEFT", tabStairwayBtn, "RIGHT", 10, 0)
+    
+    -- Container frames for each tab
+    local stairwayContainer = CreateFrame("Frame", nil, frame)
+    stairwayContainer:SetPoint("TOPLEFT", 0, -70)
+    stairwayContainer:SetPoint("BOTTOMRIGHT", 0, 0)
+    
+    local archwayContainer = CreateFrame("Frame", nil, frame)
+    archwayContainer:SetPoint("TOPLEFT", 0, -70)
+    archwayContainer:SetPoint("BOTTOMRIGHT", 0, 0)
+    
+    -- Function to switch tabs
+    local function SwitchToTab(tabIndex)
+        SpiralStairsDB.activeTabPage = tabIndex
+        
+        if tabIndex == 1 then
+            stairwayContainer:Show()
+            archwayContainer:Hide()
+            tabStairwayBtn:Disable()
+            tabArchwayBtn:Enable()
+        else
+            stairwayContainer:Hide()
+            archwayContainer:Show()
+            tabStairwayBtn:Enable()
+            tabArchwayBtn:Disable()
+        end
+    end
+    
+    tabStairwayBtn:SetScript("OnClick", function() SwitchToTab(1) end)
+    tabArchwayBtn:SetScript("OnClick", function() SwitchToTab(2) end)
+    
+    frame.tabStairwayBtn = tabStairwayBtn
+    frame.tabArchwayBtn = tabArchwayBtn
+    frame.stairwayContainer = stairwayContainer
+    frame.archwayContainer = archwayContainer
+    frame.switchToTabFunc = SwitchToTab
+
+    -- ==========================
+    -- STAIRWAY TAB CONTENT
+    -- ==========================
+    local yOffset = -5
 
     -- Add stair style selector
-    frame.styleButtons = CreateStairStyleRow(frame, yOffset)
+    frame.styleButtons = CreateStairStyleRow(stairwayContainer, yOffset)
     yOffset = yOffset - 35
 
     -- Helper to create a labeled slider row
     local function CreateSliderRow(label, dbKey, minVal, maxVal, step, isInteger)
         local rowY = yOffset
 
-        local labelText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        local labelText = stairwayContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         labelText:SetPoint("TOPLEFT", 20, rowY)
         labelText:SetText(label)
         labelText:SetWidth(100)
         labelText:SetJustifyH("LEFT")
 
-        local slider = CreateSlider(frame, nil, minVal, maxVal, step)
+        local slider = CreateSlider(stairwayContainer, nil, minVal, maxVal, step)
         slider:SetPoint("TOPLEFT", 125, rowY)
 
         -- Create an editable EditBox instead of a FontString
-        local valueBox = CreateEditBox(frame, nil, 45)
+        local valueBox = CreateEditBox(stairwayContainer, nil, 45)
         valueBox:SetPoint("LEFT", slider, "RIGHT", 8, 0)
         
         -- Flag to prevent infinite update loops
@@ -673,7 +742,7 @@ local function CreateConfigFrame()
 
     -- Direction checkbox
     yOffset = yOffset - 10
-    local dirCheck = CreateCheckbox(frame, nil, "Clockwise Direction")
+    local dirCheck = CreateCheckbox(stairwayContainer, nil, "Clockwise Direction")
     dirCheck:SetPoint("TOPLEFT", 20, yOffset)
     dirCheck:SetScript("OnClick", function(self)
         SpiralStairsDB.clockwise = self:GetChecked()
@@ -683,7 +752,7 @@ local function CreateConfigFrame()
     yOffset = yOffset - 35
 
     -- Buttons
-    local resetBtn = CreateButton(frame, nil, "Reset Defaults", 280, 24)
+    local resetBtn = CreateButton(stairwayContainer, nil, "Reset Defaults", 280, 24)
     resetBtn:SetPoint("TOPLEFT", 20, yOffset)
     resetBtn:SetScript("OnClick", function()
         for k, v in pairs(defaults) do
@@ -696,7 +765,7 @@ local function CreateConfigFrame()
 
     yOffset = yOffset - 30
 
-    local printBtn = CreateButton(frame, nil, "Print Steps", 280, 24)
+    local printBtn = CreateButton(stairwayContainer, nil, "Print Steps", 280, 24)
     printBtn:SetPoint("TOPLEFT", 20, yOffset)
     printBtn:SetScript("OnClick", function()
         SS:PrintStairPositions()
@@ -714,6 +783,150 @@ local function CreateConfigFrame()
     printBtn:SetScript("OnLeave", function(self)
         GameTooltip:Hide()
     end)
+
+    -- ==========================
+    -- ARCHWAY TAB CONTENT
+    -- ==========================
+    local archwayYOffset = -5
+    
+    -- Segment count slider
+    local segmentLabel = archwayContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    segmentLabel:SetPoint("TOPLEFT", 20, archwayYOffset)
+    segmentLabel:SetText("Bridge Segments:")
+    segmentLabel:SetWidth(120)
+    segmentLabel:SetJustifyH("LEFT")
+    
+    local segmentSlider = CreateSlider(archwayContainer, nil, 2, 24, 1)
+    segmentSlider:SetPoint("TOPLEFT", 145, archwayYOffset)
+    
+    local segmentValueBox = CreateEditBox(archwayContainer, nil, 45)
+    segmentValueBox:SetPoint("LEFT", segmentSlider, "RIGHT", 8, 0)
+    
+    local segmentUpdatingFromSlider = false
+    local segmentUpdatingFromEditBox = false
+    
+    local function ValidateSegmentValue()
+        if segmentUpdatingFromSlider then return end
+        segmentUpdatingFromEditBox = true
+        
+        local value = tonumber(segmentValueBox:GetText())
+        if value then
+            if value < 2 then
+                value = 2
+            elseif value > 24 then
+                value = 24
+            end
+            
+            value = math_floor(value + 0.5)
+            SpiralStairsDB.bridgeSegmentCount = value
+            segmentSlider:SetValue(value)
+            segmentValueBox:SetText(string_format("%d", value))
+            
+            -- Refresh angle display
+            if frame.angleDisplayText then
+                local angles = ComputeBridgeAngles(value)
+                local angleText = "Y-Axis Rotations:\n"
+                for i, angle in ipairs(angles) do
+                    angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
+                end
+                frame.angleDisplayText:SetText(angleText)
+            end
+        else
+            local currentValue = SpiralStairsDB.bridgeSegmentCount
+            segmentValueBox:SetText(string_format("%d", currentValue))
+        end
+        
+        segmentUpdatingFromEditBox = false
+    end
+    
+    segmentSlider:SetScript("OnValueChanged", function(self, value)
+        if segmentUpdatingFromEditBox then return end
+        segmentUpdatingFromSlider = true
+        
+        value = math_floor(value + 0.5)
+        SpiralStairsDB.bridgeSegmentCount = value
+        segmentValueBox:SetText(string_format("%d", value))
+        
+        -- Refresh angle display
+        if frame.angleDisplayText then
+            local angles = ComputeBridgeAngles(value)
+            local angleText = "Y-Axis Rotations:\n"
+            for i, angle in ipairs(angles) do
+                angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
+            end
+            frame.angleDisplayText:SetText(angleText)
+        end
+        
+        segmentUpdatingFromSlider = false
+    end)
+    
+    segmentValueBox:SetScript("OnEnterPressed", function(self)
+        ValidateSegmentValue()
+        self:ClearFocus()
+    end)
+    
+    segmentValueBox:SetScript("OnEscapePressed", function(self)
+        local currentValue = SpiralStairsDB.bridgeSegmentCount
+        self:SetText(string_format("%d", currentValue))
+        self:ClearFocus()
+    end)
+    
+    segmentValueBox:SetScript("OnEditFocusLost", function(self)
+        ValidateSegmentValue()
+    end)
+    
+    frame.segmentSlider = segmentSlider
+    frame.segmentValueBox = segmentValueBox
+    
+    archwayYOffset = archwayYOffset - 45
+    
+    -- Angle display scroll frame
+    local angleScrollFrame = CreateFrame("ScrollFrame", nil, archwayContainer, "UIPanelScrollFrameTemplate")
+    angleScrollFrame:SetPoint("TOPLEFT", 20, archwayYOffset)
+    angleScrollFrame:SetSize(280, 250)
+    
+    local angleScrollChild = CreateFrame("Frame", nil, angleScrollFrame)
+    angleScrollChild:SetSize(260, 500)
+    angleScrollFrame:SetScrollChild(angleScrollChild)
+    
+    local angleDisplayText = angleScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    angleDisplayText:SetPoint("TOPLEFT", 5, -5)
+    angleDisplayText:SetWidth(250)
+    angleDisplayText:SetJustifyH("LEFT")
+    angleDisplayText:SetText("Y-Axis Rotations:\nAdjust segments to see angles")
+    
+    frame.angleDisplayText = angleDisplayText
+    
+    archwayYOffset = archwayYOffset - 260
+    
+    -- Show Angles button
+    local showAnglesBtn = CreateButton(archwayContainer, nil, "Show Angles in Chat", 280, 24)
+    showAnglesBtn:SetPoint("TOPLEFT", 20, archwayYOffset)
+    showAnglesBtn:SetScript("OnClick", function()
+        local count = SpiralStairsDB.bridgeSegmentCount or 8
+        local angles = ComputeBridgeAngles(count)
+        
+        print("|cffffcc00Archway Bridge - Y-Axis Rotation Angles|r")
+        print(string_format("Segments: %d", count))
+        print("---")
+        
+        for i, angle in ipairs(angles) do
+            print(string_format("Segment %d: |cff00ff00%.1f°|r", i, angle))
+        end
+    end)
+    
+    showAnglesBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Show Angles in Chat", 1, 1, 1)
+        GameTooltip:AddLine("Prints the Y-axis rotation angle for each bridge segment to the chat window.", nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    showAnglesBtn:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
+    end)
+    
+    -- Initialize tab state
+    SwitchToTab(db.activeTabPage or 1)
 
     frame:Hide()
     SS.configFrame = frame
@@ -756,6 +969,28 @@ function SS:RefreshConfigUI()
     frame.originalRotationRow.valueBox:SetText(string_format("%d", db.originalRotation or 0))
 
     frame.directionCheck:SetChecked(db.clockwise)
+    
+    -- Update archway tab controls
+    if frame.segmentSlider and frame.segmentValueBox then
+        local segmentCount = db.bridgeSegmentCount or 8
+        frame.segmentSlider:SetValue(segmentCount)
+        frame.segmentValueBox:SetText(string_format("%d", segmentCount))
+        
+        -- Update angle display
+        if frame.angleDisplayText then
+            local angles = ComputeBridgeAngles(segmentCount)
+            local angleText = "Y-Axis Rotations:\n"
+            for i, angle in ipairs(angles) do
+                angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
+            end
+            frame.angleDisplayText:SetText(angleText)
+        end
+    end
+    
+    -- Update tab state
+    if frame.switchToTabFunc then
+        frame.switchToTabFunc(db.activeTabPage or 1)
+    end
 end
 
 --- Toggle the config frame visibility
