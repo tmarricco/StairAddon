@@ -450,7 +450,7 @@ local function CreateStairStyleRow(parent, yPos)
     
     -- Create buttons for each style
     local buttons = {}
-    local buttonWidth = 75
+    local buttonWidth = 60
     local buttonSpacing = 5
     local startX = 125
     
