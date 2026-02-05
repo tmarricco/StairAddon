@@ -885,8 +885,9 @@ local function CreateConfigFrame()
     angleScrollFrame:SetPoint("TOPLEFT", 20, archwayYOffset)
     angleScrollFrame:SetSize(280, 250)
     
+    -- Calculate scroll child height dynamically (24 segments max * ~15px per line + padding)
     local angleScrollChild = CreateFrame("Frame", nil, angleScrollFrame)
-    angleScrollChild:SetSize(260, 500)
+    angleScrollChild:SetSize(260, 400)
     angleScrollFrame:SetScrollChild(angleScrollChild)
     
     local angleDisplayText = angleScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
