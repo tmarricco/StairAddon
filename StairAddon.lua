@@ -18,14 +18,13 @@ local defaults = {
     selectedBeamIndex = 1,  -- Index of selected beam type
 }
 
--- Common beam/plank furniture items for stairs
--- Users can customize this list with their preferred items
+-- Beam platform items for building stairs
+-- These are the 4 city-themed beam platforms available in WoW housing
 local BEAM_TYPES = {
-    { name = "Wooden Plank", itemID = nil },      -- Placeholder - update with actual item IDs
-    { name = "Stone Slab", itemID = nil },
-    { name = "Metal Grate", itemID = nil },
-    { name = "Carved Step", itemID = nil },
-    { name = "Rustic Board", itemID = nil },
+    { name = "Stormwind Beam Platform", itemID = 246244 },    -- Alliance - traditional, rustic
+    { name = "Bel'ameth Beam Platform", itemID = 246254 },    -- Alliance - black, dark brown
+    { name = "Silvermoon Beam Platform", itemID = 246249 },   -- Horde - dark gray, gray, tan
+    { name = "Orgrimmar Beam Platform", itemID = 246259 },    -- Horde - orcish style
 }
 
 -- Spiral build mode state
