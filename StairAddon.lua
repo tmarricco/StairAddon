@@ -18,10 +18,10 @@ local defaults = {
     buttonPos = nil,        -- Position of the Edit Mode button {point, x, y}
     selectedBeamIndex = 1,  -- Index of selected beam type
     originalRotation = 0,   -- Original rotation of first beam when placed (degrees)
-    stairStyle = 1,         -- Index of selected stair style (1 = Base, 2 = Gradual, 3 = Regal)
+    stairStyle = 1,         -- Index of selected stair style (1 = Default, 2 = Gradual, 3 = Regal)
     activeTabPage = 1,      -- Which tab is currently active (1 = Stairway, 2 = Archway)
     bridgeSegmentCount = 8, -- Number of segments for archway bridge (2-24)
-    archwayType = 1,        -- Index of selected archway type (1 = Semicircular, 2 = Elven, 3 = Drawbridge)
+    archwayType = 1,        -- Index of selected archway type (1 = Human, 2 = Elven, 3 = Drawbridge)
 }
 
 -- Stair style definitions
@@ -29,7 +29,7 @@ local defaults = {
 -- All styles are calculated to reach FLOOR_HEIGHT (6.0 units) from one floor to the next
 local STAIR_STYLES = {
     {
-        name = "Base",
+        name = "Default",
         description = "Standard stairs with 12 beams",
         numSteps = 12,
         heightPerStep = 0.5,  -- 12 * 0.5 = 6.0 (one floor)
@@ -52,7 +52,7 @@ local STAIR_STYLES = {
 -- Defines different archway path shapes for bridge construction
 local ARCHWAY_TYPES = {
     {
-        name = "Semicircular",
+        name = "Human",
         description = "Standard semicircular arch path (180° arc)",
     },
     {
@@ -117,7 +117,7 @@ function SS:ApplyStairStyle(styleIndex)
     
     -- Ensure styleIndex is valid
     if styleIndex < 1 or styleIndex > #STAIR_STYLES then
-        styleIndex = 1  -- Default to Base style
+        styleIndex = 1  -- Default to Default style
     end
     
     local style = STAIR_STYLES[styleIndex]
@@ -558,17 +558,17 @@ end
 
 --- Calculate Y-axis rotation angles for archway bridge segments
 --- @param segmentCount number Number of segments (2-24)
---- @param archwayType number Type of archway (1=Semicircular, 2=Elven, 3=Drawbridge)
+--- @param archwayType number Type of archway (1=Human, 2=Elven, 3=Drawbridge)
 local function ComputeBridgeAngles(segmentCount, archwayType)
     local angles = {}
     if segmentCount < 2 then
         return angles
     end
     
-    archwayType = archwayType or 1  -- Default to Semicircular
+    archwayType = archwayType or 1  -- Default to Human
     
     if archwayType == 1 then
-        -- Semicircular: Standard 180-degree arc
+        -- Human: Standard 180-degree arc
         local totalArc = 180
         local angleIncrement = totalArc / (segmentCount - 1)
         
@@ -1312,7 +1312,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
     elseif cmd == "style" and arg ~= "" then
         local styleArg = arg:lower()
         local styleIndex = nil
-        if styleArg == "base" then
+        if styleArg == "default" or styleArg == "base" then
             styleIndex = 1
         elseif styleArg == "gradual" then
             styleIndex = 2
@@ -1326,7 +1326,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
             print(string_format("|cff00ff00Stair style set to: %s|r", STAIR_STYLES[styleIndex].name))
             print(string_format("  Steps: %d, Height/Step: %.2f", STAIR_STYLES[styleIndex].numSteps, STAIR_STYLES[styleIndex].heightPerStep))
         else
-            print("|cffff0000Invalid style. Use: base, gradual, or regal|r")
+            print("|cffff0000Invalid style. Use: default, gradual, or regal|r")
         end
     elseif cmd == "start" or cmd == "begin" then
         SS:StartBuildMode()
@@ -1348,7 +1348,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         print("|cffffcc00/stairs original <n>|r - Set original rotation (degrees)")
         print("|cffffcc00/stairs steps <n>|r - Set num steps")
         print("|cffffcc00/stairs cw|ccw|r - Set direction")
-        print("|cffffcc00/stairs style <base|gradual|regal>|r - Set stair style")
+        print("|cffffcc00/stairs style <default|gradual|regal>|r - Set stair style")
         print("|cff00ff00--- Build Mode ------|r")
         print("|cffffcc00/stairs start|r - Start spiral build mode")
         print("|cffffcc00/stairs stop|r - Stop spiral build mode")
