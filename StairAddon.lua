@@ -21,6 +21,7 @@ local defaults = {
     stairStyle = 1,         -- Index of selected stair style (1 = Base, 2 = Gradual, 3 = Regal)
     activeTabPage = 1,      -- Which tab is currently active (1 = Stairway, 2 = Archway)
     bridgeSegmentCount = 8, -- Number of segments for archway bridge (2-24)
+    archwayType = 1,        -- Index of selected archway type (1 = Semicircular, 2 = Elven, 3 = Drawbridge)
 }
 
 -- Stair style definitions
@@ -44,6 +45,23 @@ local STAIR_STYLES = {
         description = "Regal stairs with 24 beams at 75% tread depth",
         numSteps = 24,
         heightPerStep = 0.25,  -- 24 * 0.25 = 6.0 (one floor), 75% visible tread
+    },
+}
+
+-- Archway type definitions
+-- Defines different archway path shapes for bridge construction
+local ARCHWAY_TYPES = {
+    {
+        name = "Semicircular",
+        description = "Standard semicircular arch path (180° arc)",
+    },
+    {
+        name = "Elven",
+        description = "Gradual dome with flat 15% sections at each end",
+    },
+    {
+        name = "Drawbridge",
+        description = "Slight downward curvature across entire length",
     },
 }
 
@@ -72,6 +90,7 @@ local math_sin = math.sin
 local math_cos = math.cos
 local math_rad = math.rad
 local math_floor = math.floor
+local math_pi = math.pi
 local string_format = string.format
 
 -- Calculated stair positions
@@ -485,21 +504,113 @@ local function CreateStairStyleRow(parent, yPos)
     return dropdown
 end
 
+local function CreateArchwayTypeRow(parent, yPos)
+    local labelText = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    labelText:SetPoint("TOPLEFT", 20, yPos)
+    labelText:SetText("Archway Type:")
+    labelText:SetWidth(100)
+    labelText:SetJustifyH("LEFT")
+    
+    -- Create dropdown menu
+    local dropdown = CreateFrame("Frame", "SpiralStairsArchwayTypeDropdown", parent, "UIDropDownMenuTemplate")
+    dropdown:SetPoint("TOPLEFT", 110, yPos + 5)
+    UIDropDownMenu_SetWidth(dropdown, 180)
+    
+    -- Initialize dropdown
+    UIDropDownMenu_Initialize(dropdown, function(self, level)
+        local info = UIDropDownMenu_CreateInfo()
+        
+        for i, archType in ipairs(ARCHWAY_TYPES) do
+            info.text = archType.name
+            info.value = i
+            info.func = function()
+                SpiralStairsDB.archwayType = i
+                UIDropDownMenu_SetSelectedValue(dropdown, i)
+                
+                -- Refresh angle display
+                local frame = SS.configFrame
+                if frame and frame.angleDisplayText then
+                    local count = SpiralStairsDB.bridgeSegmentCount or 8
+                    local angles = ComputeBridgeAngles(count, i)
+                    local angleText = "Y-Axis Rotations:\n"
+                    for j, angle in ipairs(angles) do
+                        angleText = angleText .. string_format("Segment %d: %.1f°\n", j, angle)
+                    end
+                    frame.angleDisplayText:SetText(angleText)
+                end
+            end
+            info.checked = (SpiralStairsDB.archwayType == i)
+            
+            -- Add tooltip info
+            info.tooltipTitle = archType.name
+            info.tooltipText = archType.description
+            info.tooltipOnButton = true
+            
+            UIDropDownMenu_AddButton(info)
+        end
+    end)
+    
+    -- Set initial selection
+    UIDropDownMenu_SetSelectedValue(dropdown, SpiralStairsDB.archwayType or 1)
+    
+    return dropdown
+end
+
 --- Calculate Y-axis rotation angles for archway bridge segments
-local function ComputeBridgeAngles(segmentCount)
+--- @param segmentCount number Number of segments (2-24)
+--- @param archwayType number Type of archway (1=Semicircular, 2=Elven, 3=Drawbridge)
+local function ComputeBridgeAngles(segmentCount, archwayType)
     local angles = {}
     if segmentCount < 2 then
         return angles
     end
     
-    -- Distribute 180 degrees across the segments for a semicircular arch
-    local totalArc = 180
-    local angleIncrement = totalArc / (segmentCount - 1)
+    archwayType = archwayType or 1  -- Default to Semicircular
     
-    for i = 1, segmentCount do
-        -- Start at -90 (left side), end at +90 (right side)
-        local angle = -90 + (i - 1) * angleIncrement
-        angles[i] = angle
+    if archwayType == 1 then
+        -- Semicircular: Standard 180-degree arc
+        local totalArc = 180
+        local angleIncrement = totalArc / (segmentCount - 1)
+        
+        for i = 1, segmentCount do
+            -- Start at -90 (left side), end at +90 (right side)
+            local angle = -90 + (i - 1) * angleIncrement
+            angles[i] = angle
+        end
+        
+    elseif archwayType == 2 then
+        -- Elven: Gradual dome with flat 15% at each end
+        local flatPercent = 0.15
+        
+        for i = 1, segmentCount do
+            local normalizedPos = (i - 1) / (segmentCount - 1)  -- 0 to 1
+            
+            if normalizedPos <= flatPercent then
+                -- First 15%: flat (0 degrees)
+                angles[i] = 0
+            elseif normalizedPos >= (1 - flatPercent) then
+                -- Last 15%: flat (0 degrees)
+                angles[i] = 0
+            else
+                -- Middle 70%: gradual dome shape
+                -- Map to 0-1 range for the curved section
+                local curvePos = (normalizedPos - flatPercent) / (1 - 2 * flatPercent)
+                -- Use sine curve for smooth dome (0° at edges, peaks at center)
+                local angle = math_sin(curvePos * math_pi) * 30  -- Max 30° at center
+                angles[i] = angle
+            end
+        end
+        
+    elseif archwayType == 3 then
+        -- Drawbridge: Slight downward curvature across entire length
+        for i = 1, segmentCount do
+            local normalizedPos = (i - 1) / (segmentCount - 1)  -- 0 to 1
+            -- Parabolic curve: starts at 0, dips down in middle, returns to 0
+            -- Using inverted parabola: -4 * (x - 0.5)^2 + 1, scaled by -15 degrees
+            local centerOffset = normalizedPos - 0.5
+            local angle = -15 * (1 - 4 * centerOffset * centerOffset)
+            angles[i] = angle
+        end
     end
     
     return angles
@@ -781,6 +892,12 @@ local function CreateConfigFrame()
     -- ==========================
     local archwayYOffset = -5
     
+    -- Archway Type dropdown
+    local archwayTypeDropdown = CreateArchwayTypeRow(archwayContainer, archwayYOffset)
+    frame.archwayTypeDropdown = archwayTypeDropdown
+    
+    archwayYOffset = archwayYOffset - 35
+    
     -- Segment count slider
     local segmentLabel = archwayContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     segmentLabel:SetPoint("TOPLEFT", 20, archwayYOffset)
@@ -816,7 +933,8 @@ local function CreateConfigFrame()
             
             -- Refresh angle display
             if frame.angleDisplayText then
-                local angles = ComputeBridgeAngles(value)
+                local archwayType = SpiralStairsDB.archwayType or 1
+                local angles = ComputeBridgeAngles(value, archwayType)
                 local angleText = "Y-Axis Rotations:\n"
                 for i, angle in ipairs(angles) do
                     angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
@@ -841,7 +959,8 @@ local function CreateConfigFrame()
         
         -- Refresh angle display
         if frame.angleDisplayText then
-            local angles = ComputeBridgeAngles(value)
+            local archwayType = SpiralStairsDB.archwayType or 1
+            local angles = ComputeBridgeAngles(value, archwayType)
             local angleText = "Y-Axis Rotations:\n"
             for i, angle in ipairs(angles) do
                 angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
@@ -897,9 +1016,12 @@ local function CreateConfigFrame()
     showAnglesBtn:SetPoint("TOPLEFT", 20, archwayYOffset)
     showAnglesBtn:SetScript("OnClick", function()
         local count = SpiralStairsDB.bridgeSegmentCount or 8
-        local angles = ComputeBridgeAngles(count)
+        local archwayType = SpiralStairsDB.archwayType or 1
+        local angles = ComputeBridgeAngles(count, archwayType)
         
+        local typeName = ARCHWAY_TYPES[archwayType].name
         print("|cffffcc00Archway Bridge - Y-Axis Rotation Angles|r")
+        print(string_format("Type: %s", typeName))
         print(string_format("Segments: %d", count))
         print("---")
         
@@ -965,13 +1087,20 @@ function SS:RefreshConfigUI()
         
         -- Update angle display
         if frame.angleDisplayText then
-            local angles = ComputeBridgeAngles(segmentCount)
+            local archwayType = db.archwayType or 1
+            local angles = ComputeBridgeAngles(segmentCount, archwayType)
             local angleText = "Y-Axis Rotations:\n"
             for i, angle in ipairs(angles) do
                 angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
             end
             frame.angleDisplayText:SetText(angleText)
         end
+    end
+    
+    -- Update archway type dropdown
+    if frame.archwayTypeDropdown then
+        local currentType = db.archwayType or 1
+        UIDropDownMenu_SetSelectedValue(frame.archwayTypeDropdown, currentType)
     end
     
     -- Update tab state
