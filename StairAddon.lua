@@ -358,124 +358,7 @@ local function CreateButton(parent, name, text, width, height)
     return button
 end
 
-local function CreateDropdown(parent, name, width)
-    local dropdown = CreateFrame("Frame", name, parent, "BackdropTemplate")
-    dropdown:SetSize(width or 150, 25)
 
-    dropdown:SetBackdrop({
-        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true,
-        tileSize = 16,
-        edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 }
-    })
-    dropdown:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
-
-    -- Selected text display
-    local selectedText = dropdown:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    selectedText:SetPoint("LEFT", 10, 0)
-    selectedText:SetPoint("RIGHT", -25, 0)
-    selectedText:SetJustifyH("LEFT")
-    dropdown.selectedText = selectedText
-
-    -- Dropdown arrow button
-    local arrowBtn = CreateFrame("Button", nil, dropdown)
-    arrowBtn:SetSize(20, 20)
-    arrowBtn:SetPoint("RIGHT", -3, 0)
-    arrowBtn:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
-    arrowBtn:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
-    arrowBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-
-    -- Dropdown menu frame
-    local menuFrame = CreateFrame("Frame", nil, dropdown, "BackdropTemplate")
-    menuFrame:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
-    menuFrame:SetPoint("TOPRIGHT", dropdown, "BOTTOMRIGHT", 0, -2)
-    menuFrame:SetBackdrop({
-        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true,
-        tileSize = 16,
-        edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 }
-    })
-    menuFrame:SetBackdropColor(0.1, 0.1, 0.1, 0.95)
-    menuFrame:SetFrameStrata("FULLSCREEN_DIALOG")
-    menuFrame:Hide()
-    dropdown.menuFrame = menuFrame
-
-    dropdown.items = {}
-    dropdown.selectedIndex = 1
-    dropdown.OnSelectCallback = nil
-
-    function dropdown:SetItems(items)
-        -- Clear existing items
-        for _, item in ipairs(self.items) do
-            item:Hide()
-            item:SetParent(nil)
-        end
-        self.items = {}
-
-        local yOffset = -5
-        for i, itemData in ipairs(items) do
-            local itemBtn = CreateFrame("Button", nil, menuFrame)
-            itemBtn:SetSize(width - 10, 20)
-            itemBtn:SetPoint("TOPLEFT", 5, yOffset)
-
-            local itemText = itemBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            itemText:SetPoint("LEFT", 5, 0)
-            itemText:SetText(itemData.name)
-            itemBtn.text = itemText
-
-            itemBtn:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-
-            itemBtn:SetScript("OnClick", function()
-                self.selectedIndex = i
-                self.selectedText:SetText(itemData.name)
-                menuFrame:Hide()
-                if self.OnSelectCallback then
-                    self.OnSelectCallback(i, itemData)
-                end
-            end)
-
-            table.insert(self.items, itemBtn)
-            yOffset = yOffset - 20
-        end
-
-        menuFrame:SetHeight(math.abs(yOffset) + 10)
-
-        -- Set initial selection
-        if items[self.selectedIndex] then
-            self.selectedText:SetText(items[self.selectedIndex].name)
-        end
-    end
-
-    function dropdown:SetSelectedIndex(index)
-        self.selectedIndex = index
-        if BEAM_TYPES[index] then
-            self.selectedText:SetText(BEAM_TYPES[index].name)
-        end
-    end
-
-    -- Toggle menu on click
-    local function ToggleMenu()
-        if menuFrame:IsShown() then
-            menuFrame:Hide()
-        else
-            menuFrame:Show()
-        end
-    end
-
-    arrowBtn:SetScript("OnClick", ToggleMenu)
-    dropdown:SetScript("OnMouseDown", ToggleMenu)
-
-    -- Close menu when clicking elsewhere
-    menuFrame:SetScript("OnShow", function()
-        menuFrame:SetFrameLevel(dropdown:GetFrameLevel() + 10)
-    end)
-
-    return dropdown
-end
 
 local function CreateCheckbox(parent, name, label)
     local check = CreateFrame("CheckButton", name, parent)
@@ -711,16 +594,16 @@ local function CreateConfigFrame()
 
     yOffset = yOffset - 30
 
-    local printBtn = CreateButton(frame, nil, "Print Positions", 280, 24)
+    local printBtn = CreateButton(frame, nil, "Print Steps", 280, 24)
     printBtn:SetPoint("TOPLEFT", 20, yOffset)
     printBtn:SetScript("OnClick", function()
         SS:PrintStairPositions()
     end)
     
-    -- Add tooltip to Print Positions button
+    -- Add tooltip to Print Steps button
     printBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Print Positions", 1, 1, 1)
+        GameTooltip:SetText("Print Steps", 1, 1, 1)
         GameTooltip:AddLine("Outputs all staircase configuration and positions to chat.", nil, nil, nil, true)
         GameTooltip:AddLine(" ", nil, nil, nil, true)
         GameTooltip:AddLine("Height/Step: The vertical distance (Z) that each step rises from the previous one.", nil, nil, nil, true)
@@ -729,76 +612,6 @@ local function CreateConfigFrame()
     printBtn:SetScript("OnLeave", function(self)
         GameTooltip:Hide()
     end)
-
-    yOffset = yOffset - 35
-
-    -- Separator line
-    local separator = frame:CreateTexture(nil, "ARTWORK")
-    separator:SetHeight(1)
-    separator:SetPoint("TOPLEFT", 15, yOffset)
-    separator:SetPoint("TOPRIGHT", -15, yOffset)
-    separator:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-    yOffset = yOffset - 10
-
-    -- Build Mode Section Title
-    local buildTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    buildTitle:SetPoint("TOPLEFT", 20, yOffset)
-    buildTitle:SetText("|cff00ff00Spiral Build Mode|r")
-    yOffset = yOffset - 25
-
-    -- Beam Type Dropdown
-    local beamLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    beamLabel:SetPoint("TOPLEFT", 20, yOffset)
-    beamLabel:SetText("Beam Type:")
-
-    local beamDropdown = CreateDropdown(frame, "SpiralStairsBeamDropdown", 170)
-    beamDropdown:SetPoint("TOPLEFT", 110, yOffset + 3)
-    beamDropdown:SetItems(BEAM_TYPES)
-    beamDropdown:SetSelectedIndex(SpiralStairsDB.selectedBeamIndex or 1)
-    beamDropdown.OnSelectCallback = function(index, itemData)
-        SpiralStairsDB.selectedBeamIndex = index
-    end
-    frame.beamDropdown = beamDropdown
-    yOffset = yOffset - 35
-
-    -- Build status display
-    local buildStatusText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    buildStatusText:SetPoint("TOPLEFT", 20, yOffset)
-    buildStatusText:SetText("|cff888888Not building|r\nPress Start to begin")
-    buildStatusText:SetJustifyH("LEFT")
-    frame.buildStatusText = buildStatusText
-    yOffset = yOffset - 40
-
-    -- Start/Stop Build button
-    local startBuildBtn = CreateButton(frame, nil, "Start Building", 135, 24)
-    startBuildBtn:SetPoint("TOPLEFT", 20, yOffset)
-    startBuildBtn:SetScript("OnClick", function()
-        if buildState.active then
-            SS:StopBuildMode()
-        else
-            SS:StartBuildMode()
-        end
-    end)
-    frame.startBuildBtn = startBuildBtn
-
-    -- Next Step button
-    local nextStepBtn = CreateButton(frame, nil, "Next Step →", 125, 24)
-    nextStepBtn:SetPoint("TOPLEFT", 165, yOffset)
-    nextStepBtn:SetScript("OnClick", function()
-        SS:AdvanceStep()
-    end)
-    nextStepBtn:Disable()
-    frame.nextStepBtn = nextStepBtn
-    yOffset = yOffset - 28
-
-    -- Previous Step button
-    local prevStepBtn = CreateButton(frame, nil, "← Prev Step", 125, 24)
-    prevStepBtn:SetPoint("TOPLEFT", 165, yOffset)
-    prevStepBtn:SetScript("OnClick", function()
-        SS:PreviousStep()
-    end)
-    prevStepBtn:Disable()
-    frame.prevStepBtn = prevStepBtn
 
     frame:Hide()
     SS.configFrame = frame
