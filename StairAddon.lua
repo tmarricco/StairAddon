@@ -1312,7 +1312,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
     elseif cmd == "style" and arg ~= "" then
         local styleArg = arg:lower()
         local styleIndex = nil
-        if styleArg == "base" then
+        if styleArg == "default" or styleArg == "base" then
             styleIndex = 1
         elseif styleArg == "gradual" then
             styleIndex = 2
@@ -1326,7 +1326,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
             print(string_format("|cff00ff00Stair style set to: %s|r", STAIR_STYLES[styleIndex].name))
             print(string_format("  Steps: %d, Height/Step: %.2f", STAIR_STYLES[styleIndex].numSteps, STAIR_STYLES[styleIndex].heightPerStep))
         else
-            print("|cffff0000Invalid style. Use: base, gradual, or regal|r")
+            print("|cffff0000Invalid style. Use: default, gradual, or regal|r")
         end
     elseif cmd == "start" or cmd == "begin" then
         SS:StartBuildMode()
@@ -1348,7 +1348,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         print("|cffffcc00/stairs original <n>|r - Set original rotation (degrees)")
         print("|cffffcc00/stairs steps <n>|r - Set num steps")
         print("|cffffcc00/stairs cw|ccw|r - Set direction")
-        print("|cffffcc00/stairs style <base|gradual|regal>|r - Set stair style")
+        print("|cffffcc00/stairs style <default|gradual|regal>|r - Set stair style")
         print("|cff00ff00--- Build Mode ------|r")
         print("|cffffcc00/stairs start|r - Start spiral build mode")
         print("|cffffcc00/stairs stop|r - Stop spiral build mode")
