@@ -600,10 +600,10 @@ local function CreateConfigFrame()
         SS:PrintStairPositions()
     end)
     
-    -- Add tooltip to Print Positions button
+    -- Add tooltip to Print Steps button
     printBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Print Positions", 1, 1, 1)
+        GameTooltip:SetText("Print Steps", 1, 1, 1)
         GameTooltip:AddLine("Outputs all staircase configuration and positions to chat.", nil, nil, nil, true)
         GameTooltip:AddLine(" ", nil, nil, nil, true)
         GameTooltip:AddLine("Height/Step: The vertical distance (Z) that each step rises from the previous one.", nil, nil, nil, true)
