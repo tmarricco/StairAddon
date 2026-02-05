@@ -16,6 +16,7 @@ local defaults = {
     clockwise = true,       -- Direction of spiral
     buttonPos = nil,        -- Position of the Edit Mode button {point, x, y}
     selectedBeamIndex = 1,  -- Index of selected beam type
+    originalRotation = 0,   -- Original rotation of first beam when placed (degrees)
 }
 
 -- Beam platform items for building stairs
@@ -69,17 +70,22 @@ function SS:CalculateStairs()
 
     local direction = db.clockwise and 1 or -1
     local anglePerStep = CalculateAnglePerStep(db.totalRotation, db.numSteps)
+    local originalRotation = db.originalRotation or 0
 
     for i = 1, db.numSteps do
         local stepIndex = i - 1
         local angle = math_rad(stepIndex * anglePerStep * direction)
+        
+        -- Calculate rotation relative to original rotation
+        local relativeRotation = stepIndex * anglePerStep * direction
+        local absoluteRotation = (originalRotation + relativeRotation) % 360
 
         local stair = {
             step = i,
             x = db.radius * math_cos(angle),
             y = db.radius * math_sin(angle),
             z = stepIndex * db.heightPerStep,
-            rotation = (stepIndex * anglePerStep * direction) % 360,
+            rotation = absoluteRotation,
         }
 
         table.insert(self.stairs, stair)
@@ -678,6 +684,7 @@ local function CreateConfigFrame()
     frame.heightRow = CreateSliderRow("Height/Step:", "heightPerStep", 0.1, 2.0, 0.1, false)
     frame.rotationRow = CreateSliderRow("Total Rotation:", "totalRotation", MIN_ROTATION, MAX_ROTATION, MIN_ROTATION, true)
     frame.stepsRow = CreateSliderRow("Num Steps:", "numSteps", 2, 36, 1, true)
+    frame.originalRotationRow = CreateSliderRow("Original Rotation:", "originalRotation", 0, 359, 1, true)
 
     -- Direction checkbox
     yOffset = yOffset - 10
@@ -817,6 +824,9 @@ function SS:RefreshConfigUI()
     
     frame.stepsRow.slider:SetValue(db.numSteps)
     frame.stepsRow.valueBox:SetText(string_format("%d", db.numSteps))
+    
+    frame.originalRotationRow.slider:SetValue(db.originalRotation or 0)
+    frame.originalRotationRow.valueBox:SetText(string_format("%d", db.originalRotation or 0))
 
     frame.directionCheck:SetChecked(db.clockwise)
 end
@@ -999,6 +1009,13 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
             SS:CalculateStairs()
             print(string_format("|cff00ff00Total rotation set to: %d°|r", value))
         end
+    elseif cmd == "original" and arg ~= "" then
+        local value = tonumber(arg)
+        if value then
+            SpiralStairsDB.originalRotation = value % 360
+            SS:CalculateStairs()
+            print(string_format("|cff00ff00Original rotation set to: %d°|r", SpiralStairsDB.originalRotation))
+        end
     elseif cmd == "steps" and arg ~= "" then
         local value = tonumber(arg)
         if value and value >= 2 and value <= 100 then
@@ -1031,6 +1048,7 @@ SlashCmdList["SPIRALSTAIRS"] = function(msg)
         print("|cffffcc00/stairs radius <n>|r - Set radius")
         print("|cffffcc00/stairs height <n>|r - Set height/step")
         print("|cffffcc00/stairs rotation <n>|r - Set total rotation (degrees)")
+        print("|cffffcc00/stairs original <n>|r - Set original rotation (degrees)")
         print("|cffffcc00/stairs steps <n>|r - Set num steps")
         print("|cffffcc00/stairs cw|ccw|r - Set direction")
         print("|cff00ff00--- Build Mode ------|r")
