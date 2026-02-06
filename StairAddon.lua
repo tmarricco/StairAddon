@@ -573,8 +573,8 @@ local function ComputeBridgeAngles(segmentCount, archwayType)
         local angleIncrement = totalArc / (segmentCount - 1)
         
         for i = 1, segmentCount do
-            -- Start at -90 (left side), end at +90 (right side)
-            local angle = -90 + (i - 1) * angleIncrement
+            -- Start at 0 (left side), end at 180 (right side)
+            local angle = (i - 1) * angleIncrement
             angles[i] = angle
         end
         
@@ -586,17 +586,17 @@ local function ComputeBridgeAngles(segmentCount, archwayType)
             local normalizedPos = (i - 1) / (segmentCount - 1)  -- 0 to 1
             
             if normalizedPos <= flatPercent then
-                -- First 15%: flat (0 degrees)
-                angles[i] = 0
+                -- First 15%: flat (90 degrees - horizontal)
+                angles[i] = 90
             elseif normalizedPos >= (1 - flatPercent) then
-                -- Last 15%: flat (0 degrees)
-                angles[i] = 0
+                -- Last 15%: flat (90 degrees - horizontal)
+                angles[i] = 90
             else
                 -- Middle 70%: gradual dome shape
                 -- Map to 0-1 range for the curved section
                 local curvePos = (normalizedPos - flatPercent) / (1 - 2 * flatPercent)
-                -- Use sine curve for smooth dome (0° at edges, peaks at center)
-                local angle = math_sin(curvePos * math_pi) * 30  -- Max 30° at center
+                -- Use sine curve for smooth dome (90° at edges, peaks at 120° at center)
+                local angle = 90 + math_sin(curvePos * math_pi) * 30  -- 90° base + max 30° at center
                 angles[i] = angle
             end
         end
@@ -611,13 +611,13 @@ local function ComputeBridgeAngles(segmentCount, archwayType)
                 -- Left side: gradual rise with acceleration toward center
                 local leftProgress = normalizedPos * 2  -- Map 0-0.5 to 0-1
                 -- Use cubic easing for gradual start, sharp approach to peak
-                local angle = -90 + (180 * leftProgress * leftProgress * leftProgress)
+                local angle = 0 + (180 * leftProgress * leftProgress * leftProgress)
                 angles[i] = angle
             else
                 -- Right side: mirror with sharp descent from peak
                 local rightProgress = 1 - (normalizedPos - 0.5) * 2  -- Map 0.5-1 to 1-0
                 -- Use cubic easing for sharp peak, gradual end
-                local angle = 90 - (180 * rightProgress * rightProgress * rightProgress)
+                local angle = 180 - (180 * rightProgress * rightProgress * rightProgress)
                 angles[i] = angle
             end
         end
