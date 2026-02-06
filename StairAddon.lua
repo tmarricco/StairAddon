@@ -184,7 +184,7 @@ function SS:PrintStairPositions()
     print("|cff00ff00=== Spiral Staircase Positions ===|r")
     print(string_format("Radius: %.2f | Height/Step: %.2f | Total Rotation: %d°",
         db.radius, db.heightPerStep, db.totalRotation))
-    print(string_format("Angle/Step: %.2f° | Direction: %s | Steps: %d",
+    print(string_format("Angle/Step: %.0f° | Direction: %s | Steps: %d",
         anglePerStep, db.clockwise and "Clockwise" or "Counter-clockwise", db.numSteps))
     print("|cff00ff00---------------------------------|r")
 
@@ -1001,7 +1001,7 @@ local function CreateConfigFrame()
         print("---")
         
         for i, angle in ipairs(angles) do
-            print(string_format("Segment %d: |cff00ff00%.1f°|r", i, angle))
+            print(string_format("Segment %d: |cff00ff00%.0f°|r", i, angle))
         end
     end)
     
