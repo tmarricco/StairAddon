@@ -971,12 +971,25 @@ local function CreateConfigFrame()
     frame.segmentSlider = segmentSlider
     frame.segmentValueBox = segmentValueBox
     
-    archwayYOffset = archwayYOffset - 45
+    archwayYOffset = archwayYOffset - 35
     
-    -- Print Angles button
-    local printAnglesBtn = CreateButton(archwayContainer, nil, "Print Angles", 280, 24)
-    printAnglesBtn:SetPoint("TOPLEFT", 20, archwayYOffset)
-    printAnglesBtn:SetScript("OnClick", function()
+    -- Reset Defaults button
+    local resetArchwayBtn = CreateButton(archwayContainer, nil, "Reset Defaults", 280, 24)
+    resetArchwayBtn:SetPoint("TOPLEFT", 20, archwayYOffset)
+    resetArchwayBtn:SetScript("OnClick", function()
+        -- Reset only archway-specific settings
+        SpiralStairsDB.bridgeSegmentCount = defaults.bridgeSegmentCount
+        SpiralStairsDB.archwayType = defaults.archwayType
+        SS:RefreshConfigUI()
+        print("|cff00ff00Archway settings reset to defaults.|r")
+    end)
+    
+    archwayYOffset = archwayYOffset - 30
+    
+    -- Print Arches button
+    local printArchesBtn = CreateButton(archwayContainer, nil, "Print Arches", 280, 24)
+    printArchesBtn:SetPoint("TOPLEFT", 20, archwayYOffset)
+    printArchesBtn:SetScript("OnClick", function()
         local count = SpiralStairsDB.bridgeSegmentCount or 8
         local archwayType = SpiralStairsDB.archwayType or 1
         local angles = ComputeBridgeAngles(count, archwayType)
@@ -992,13 +1005,13 @@ local function CreateConfigFrame()
         end
     end)
     
-    printAnglesBtn:SetScript("OnEnter", function(self)
+    printArchesBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Print Angles", 1, 1, 1)
+        GameTooltip:SetText("Print Arches", 1, 1, 1)
         GameTooltip:AddLine("Prints the Y-axis rotation angle for each bridge segment to the chat window.", nil, nil, nil, true)
         GameTooltip:Show()
     end)
-    printAnglesBtn:SetScript("OnLeave", function(self)
+    printArchesBtn:SetScript("OnLeave", function(self)
         GameTooltip:Hide()
     end)
     
