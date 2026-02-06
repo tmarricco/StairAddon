@@ -60,8 +60,8 @@ local ARCHWAY_TYPES = {
         description = "First 15% and last 15% level with gradual dome in middle",
     },
     {
-        name = "Regal",
-        description = "Gradual archway with sharp peak at center",
+        name = "Drawbridge",
+        description = "Very shallow slope like a gentle rope bridge",
     },
 }
 
@@ -592,24 +592,15 @@ local function ComputeBridgeAngles(segmentCount, archwayType)
         end
         
     elseif archwayType == 3 then
-        -- Regal: Gradual archway with sharp peak at center
-        -- Creates a pointed/Gothic arch with cubic easing for sharp peak
+        -- Drawbridge: Very shallow slope like a gentle rope bridge
+        -- Creates a gentle downward curve with minimal sag
         for i = 1, segmentCount do
             local normalizedPos = (i - 1) / (segmentCount - 1)  -- 0 to 1
             
-            if normalizedPos <= 0.5 then
-                -- Left side: gradual rise with acceleration toward center
-                local leftProgress = normalizedPos * 2  -- Map 0-0.5 to 0-1
-                -- Use cubic easing for gradual start, sharp approach to peak
-                local angle = 0 + (180 * leftProgress * leftProgress * leftProgress)
-                angles[i] = angle
-            else
-                -- Right side: mirror with sharp descent from peak
-                local rightProgress = 1 - (normalizedPos - 0.5) * 2  -- Map 0.5-1 to 1-0
-                -- Use cubic easing for sharp peak, gradual end
-                local angle = 180 - (180 * rightProgress * rightProgress * rightProgress)
-                angles[i] = angle
-            end
+            -- Use a gentle sine curve for a slight downward sag (rope bridge effect)
+            -- Start and end at 90° (horizontal), dip slightly in the middle
+            local angle = 90 - (math_sin(normalizedPos * math_pi) * 10)  -- Max 10° dip at center
+            angles[i] = angle
         end
     end
     
