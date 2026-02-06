@@ -527,17 +527,7 @@ local function CreateArchwayTypeRow(parent, yPos)
                 SpiralStairsDB.archwayType = i
                 UIDropDownMenu_SetSelectedValue(dropdown, i)
                 
-                -- Refresh angle display
-                local frame = SS.configFrame
-                if frame and frame.angleDisplayText then
-                    local count = SpiralStairsDB.bridgeSegmentCount or 8
-                    local angles = ComputeBridgeAngles(count, i)
-                    local angleText = "Y-Axis Rotations:\n"
-                    for j, angle in ipairs(angles) do
-                        angleText = angleText .. string_format("Segment %d: %.1f°\n", j, angle)
-                    end
-                    frame.angleDisplayText:SetText(angleText)
-                end
+
             end
             info.checked = (SpiralStairsDB.archwayType == i)
             
@@ -941,16 +931,7 @@ local function CreateConfigFrame()
             segmentSlider:SetValue(value)
             segmentValueBox:SetText(string_format("%d", value))
             
-            -- Refresh angle display
-            if frame.angleDisplayText then
-                local archwayType = SpiralStairsDB.archwayType or 1
-                local angles = ComputeBridgeAngles(value, archwayType)
-                local angleText = "Y-Axis Rotations:\n"
-                for i, angle in ipairs(angles) do
-                    angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
-                end
-                frame.angleDisplayText:SetText(angleText)
-            end
+
         else
             local currentValue = SpiralStairsDB.bridgeSegmentCount
             segmentValueBox:SetText(string_format("%d", currentValue))
@@ -967,16 +948,7 @@ local function CreateConfigFrame()
         SpiralStairsDB.bridgeSegmentCount = value
         segmentValueBox:SetText(string_format("%d", value))
         
-        -- Refresh angle display
-        if frame.angleDisplayText then
-            local archwayType = SpiralStairsDB.archwayType or 1
-            local angles = ComputeBridgeAngles(value, archwayType)
-            local angleText = "Y-Axis Rotations:\n"
-            for i, angle in ipairs(angles) do
-                angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
-            end
-            frame.angleDisplayText:SetText(angleText)
-        end
+
         
         segmentUpdatingFromSlider = false
     end)
@@ -1001,30 +973,10 @@ local function CreateConfigFrame()
     
     archwayYOffset = archwayYOffset - 45
     
-    -- Angle display scroll frame
-    local angleScrollFrame = CreateFrame("ScrollFrame", nil, archwayContainer, "UIPanelScrollFrameTemplate")
-    angleScrollFrame:SetPoint("TOPLEFT", 20, archwayYOffset)
-    angleScrollFrame:SetSize(280, 250)
-    
-    -- Scroll child height set to accommodate max segments (24 segments * ~15px per line + padding)
-    local angleScrollChild = CreateFrame("Frame", nil, angleScrollFrame)
-    angleScrollChild:SetSize(260, 400)
-    angleScrollFrame:SetScrollChild(angleScrollChild)
-    
-    local angleDisplayText = angleScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    angleDisplayText:SetPoint("TOPLEFT", 5, -5)
-    angleDisplayText:SetWidth(250)
-    angleDisplayText:SetJustifyH("LEFT")
-    angleDisplayText:SetText("Y-Axis Rotations:\nAdjust segments to see angles")
-    
-    frame.angleDisplayText = angleDisplayText
-    
-    archwayYOffset = archwayYOffset - 260
-    
-    -- Show Angles button
-    local showAnglesBtn = CreateButton(archwayContainer, nil, "Show Angles in Chat", 280, 24)
-    showAnglesBtn:SetPoint("TOPLEFT", 20, archwayYOffset)
-    showAnglesBtn:SetScript("OnClick", function()
+    -- Print Angles button
+    local printAnglesBtn = CreateButton(archwayContainer, nil, "Print Angles", 280, 24)
+    printAnglesBtn:SetPoint("TOPLEFT", 20, archwayYOffset)
+    printAnglesBtn:SetScript("OnClick", function()
         local count = SpiralStairsDB.bridgeSegmentCount or 8
         local archwayType = SpiralStairsDB.archwayType or 1
         local angles = ComputeBridgeAngles(count, archwayType)
@@ -1040,13 +992,13 @@ local function CreateConfigFrame()
         end
     end)
     
-    showAnglesBtn:SetScript("OnEnter", function(self)
+    printAnglesBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Show Angles in Chat", 1, 1, 1)
+        GameTooltip:SetText("Print Angles", 1, 1, 1)
         GameTooltip:AddLine("Prints the Y-axis rotation angle for each bridge segment to the chat window.", nil, nil, nil, true)
         GameTooltip:Show()
     end)
-    showAnglesBtn:SetScript("OnLeave", function(self)
+    printAnglesBtn:SetScript("OnLeave", function(self)
         GameTooltip:Hide()
     end)
     
@@ -1095,16 +1047,7 @@ function SS:RefreshConfigUI()
         frame.segmentSlider:SetValue(segmentCount)
         frame.segmentValueBox:SetText(string_format("%d", segmentCount))
         
-        -- Update angle display
-        if frame.angleDisplayText then
-            local archwayType = db.archwayType or 1
-            local angles = ComputeBridgeAngles(segmentCount, archwayType)
-            local angleText = "Y-Axis Rotations:\n"
-            for i, angle in ipairs(angles) do
-                angleText = angleText .. string_format("Segment %d: %.1f°\n", i, angle)
-            end
-            frame.angleDisplayText:SetText(angleText)
-        end
+
     end
     
     -- Update archway type dropdown
